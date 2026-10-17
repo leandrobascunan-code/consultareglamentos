@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Timón – Colegio Marina de Chile</title>
+<meta name="description" content="Asistente de consultas sobre el Reglamento Interno y el Reglamento de Evaluación del Colegio Marina de Chile, SLEP Andalién Sur.">
+<meta name="theme-color" content="#0E2A68">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Timón CMCh">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<script>try{var t=localStorage.getItem('tema');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<div class="app">
+  <header class="barra">
+    <img src="logo.png" alt="Insignia Colegio Marina de Chile" class="barra-logo">
+    <div class="barra-titulo">
+      <strong>Timón</strong>
+      <span>Asistente · Colegio Marina de Chile</span>
+    </div>
+    <span id="estado" class="estado" title="Estado de conexión"><i></i><b>Conectando…</b></span>
+    <nav class="barra-acciones">
+      <button class="icono-btn" id="btnBiblioteca" title="Biblioteca de documentos" aria-label="Biblioteca"></button>
+      <button class="icono-btn" id="btnTema" title="Modo claro / oscuro" aria-label="Cambiar tema"></button>
+      <button class="icono-btn" id="btnNueva" title="Nueva conversación" aria-label="Nueva conversación"></button>
+    </nav>
+  </header>
+
+  <main id="chat" class="chat" aria-live="polite"></main>
+
+  <footer class="compositor">
+    <div id="perfilChip" class="perfil-chip" hidden></div>
+    <div class="atajos" id="atajos"></div>
+    <form id="formulario" class="caja" autocomplete="off">
+      <button type="button" id="btnWeb" class="icono-btn web" aria-pressed="false" title="Incluir búsqueda en fuentes oficiales (mineduc.cl, bcn.cl, supereduc.cl…)"></button>
+      <textarea id="entrada" rows="1" placeholder="Escribe tu consulta…" aria-label="Escribe tu consulta"></textarea>
+      <button type="submit" id="btnEnviar" class="enviar" title="Enviar" aria-label="Enviar"></button>
+    </form>
+    <p class="aviso-pie">No escribas nombres, RUT ni datos de salud · Respuestas con IA: verifica siempre la fuente citada.</p>
+  </footer>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <div class="modal-cabeza">
+      <h2 id="modalTitulo"></h2>
+      <button class="cerrar" id="modalCerrar">Cerrar</button>
+    </div>
+    <div class="modal-cuerpo" id="modalCuerpo"></div>
+    <div class="modal-pie" id="modalPie"></div>
+  </div>
+</div>
+<div id="aviso" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="datos.js"></script>
+<script src="conocimiento.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
