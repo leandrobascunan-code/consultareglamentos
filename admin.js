@@ -6,7 +6,7 @@
   var PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", PDFW = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   var JSZIP = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
   var CATEGORIAS = ["Reglamentos del establecimiento", "Protocolos", "PEI y planes institucionales", "Plan de Gestión de Convivencia", "PME", "Manuales", "Circulares y comunicados", "Enlaces de interés", "Otros documentos"];
-  var token = null, cat = null, pestana = "info";
+  var token = null, cat = null, pestana = "stats";
   function $(s, r) { return (r || document).querySelector(s); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function svg(p) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + "</svg>"; }
@@ -18,6 +18,7 @@
     enlace: svg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'),
     candado: svg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'), guardar: svg('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>'),
     basura: svg('<path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'), mas: svg('<path d="M12 5v14M5 12h14"/>'),
+    grafico: svg('<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-9"/>'),
     ojo: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'), lapiz: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>')
   };
   function toast(m, ms) { var t = $("#aviso"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, ms || 2800); }
@@ -61,12 +62,75 @@
 
   // ------------------------------ Pantallas ------------------------------
   function pintar() {
-    var tabs = [["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios], ["docs", "Documentos y enlaces", I.archivo]];
+    var tabs = [["stats", "Estadísticas", I.grafico], ["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios], ["docs", "Documentos y enlaces", I.archivo]];
     var z = $("#zona");
     z.innerHTML = '<div class="pestanas">' + tabs.map(function (t) { return '<button class="pestana' + (t[0] === pestana ? " activa" : "") + '" data-p="' + t[0] + '">' + esc(t[1]) + "</button>"; }).join("") +
       '</div><div id="contenidoPanel"></div><p class="ayuda" style="font-size:.8rem;color:var(--texto-suave)">Los datos se guardan en su Google Drive: <a target="_blank" rel="noopener" href="' + esc(cat.hoja) + '">hoja de datos</a> · <a target="_blank" rel="noopener" href="' + esc(cat.carpeta) + '">carpeta de documentos</a>.</p>';
     z.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { pestana = b.getAttribute("data-p"); pintar(); }; });
-    ({ info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs })[pestana]($("#contenidoPanel"));
+    ({ stats: pStats, info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs })[pestana]($("#contenidoPanel"));
+  }
+
+  // ------------------------------ Estadísticas ------------------------------
+  var CHART = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js", graficos = [];
+  var PALETA = ["#1E4FA3", "#F5C400", "#4FA3E0", "#0E2A68", "#E67E22", "#1E8E5A", "#7E57C2", "#D64545", "#0E7C86", "#9C6B00", "#7d8696"];
+  function mdSimple(t) {
+    var lineas = String(t || "").split("\n"), html = "", lista = null, tabla = [];
+    function inl(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>"); }
+    function cerrar() {
+      if (lista) { html += "</" + lista + ">"; lista = null; }
+      if (tabla.length) { html += '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.9rem">' + tabla.map(function (f, i) { return "<tr>" + f.map(function (c) { return i === 0 ? '<th style="background:#0E2A68;color:#fff;padding:7px;text-align:left">' + inl(c) + "</th>" : '<td style="border-top:1px solid var(--borde);padding:7px;vertical-align:top">' + inl(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</table></div>"; tabla = []; }
+    }
+    lineas.forEach(function (l) {
+      var m;
+      if (/^\s*\|.*\|\s*$/.test(l)) { if (lista) { html += "</" + lista + ">"; lista = null; } var cs = l.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return c.trim(); }); if (!cs.every(function (c) { return /^:?-{2,}:?$/.test(c); })) tabla.push(cs); return; }
+      if (tabla.length) cerrar();
+      if ((m = l.match(/^\s*#{1,4}\s+(.*)/))) { cerrar(); html += '<h3 style="color:var(--azul);margin:14px 0 6px">' + inl(m[1]) + "</h3>"; return; }
+      if ((m = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/))) { var tipo = /^\s*\d/.test(l) ? "ol" : "ul"; if (lista !== tipo) { cerrar(); html += "<" + tipo + ">"; lista = tipo; } html += "<li>" + inl(m[1]) + "</li>"; return; }
+      cerrar(); if (l.trim()) html += "<p>" + inl(l) + "</p>";
+    });
+    cerrar(); return html;
+  }
+  function pStats(c) {
+    c.innerHTML = '<div class="tarjeta"><p>Cargando estadísticas…</p></div>';
+    api({ accion: "estadisticas" }).then(function (j) {
+      if (!j.ok) { c.innerHTML = '<div class="tarjeta"><div class="mensaje mal">' + esc(j.error) + "</div></div>"; return; }
+      var filas = j.filas || [], meses = [];
+      filas.forEach(function (f) { if (meses.indexOf(f.mes) < 0) meses.push(f.mes); }); meses.sort();
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.grafico + ' Consultas por tema</h2><p class="ayuda">Se cuenta solo el <b>tema general</b> y el <b>rol</b> de cada consulta, de forma anónima (nunca el texto). Úselo para detectar las principales dudas y orientar un plan de trabajo de apropiación del reglamento.</p>' +
+        '<div class="campo" style="max-width:260px"><label for="fMes">Período</label><select id="fMes"><option value="">Todo el registro</option>' + meses.slice().reverse().map(function (m) { return "<option>" + esc(m) + "</option>"; }).join("") + "</select></div>" +
+        '<div id="kpis" class="kpis"></div><div class="graf-caja"><h3>Temas consultados</h3><div style="position:relative;height:340px"><canvas id="gTemas"></canvas></div></div>' +
+        '<div class="rejilla"><div class="graf-caja"><h3>Consultas por rol</h3><div style="position:relative;height:240px"><canvas id="gRoles"></canvas></div></div><div class="graf-caja"><h3>Evolución mensual</h3><div style="position:relative;height:240px"><canvas id="gMeses"></canvas></div></div></div>' +
+        '<div id="tablaTemas"></div><div class="acciones-fila"><button class="boton" id="btnPlan">' + I.brujula + ' Generar plan de trabajo con IA</button><button class="boton sec" id="btnCsv">' + I.archivo + ' Descargar datos (CSV)</button></div><div id="plan"></div></div>';
+      function dibujar() {
+        var mes = $("#fMes").value, porTema = {}, porRol = {}, porMes = {}, total = 0;
+        filas.forEach(function (f) { porMes[f.mes] = (porMes[f.mes] || 0) + f.n; if (mes && f.mes !== mes) return; porTema[f.tema] = (porTema[f.tema] || 0) + f.n; porRol[f.rol] = (porRol[f.rol] || 0) + f.n; total += f.n; });
+        var temas = Object.keys(porTema).sort(function (a, b) { return porTema[b] - porTema[a]; }), roles = Object.keys(porRol).sort(function (a, b) { return porRol[b] - porRol[a]; });
+        $("#kpis").innerHTML = [["Consultas", total], ["Tema principal", temas[0] || "—"], ["Rol que más consulta", roles[0] || "—"]].map(function (k) { return '<div class="kpi"><b>' + esc(k[1]) + "</b><span>" + esc(k[0]) + "</span></div>"; }).join("");
+        $("#tablaTemas").innerHTML = total ? '<table class="tabla-stats"><tr><th>Tema</th><th>Consultas</th><th>%</th></tr>' + temas.map(function (t) { return "<tr><td>" + esc(t) + "</td><td>" + porTema[t] + "</td><td>" + Math.round(porTema[t] * 100 / total) + "%</td></tr>"; }).join("") + "</table>" : '<div class="mensaje info">Aún no hay consultas registradas. Aparecerán aquí a medida que la comunidad use el chat.</div>';
+        cargar(CHART).then(function () {
+          graficos.forEach(function (g) { g.destroy(); }); graficos = [];
+          var oscuro = document.documentElement.getAttribute("data-theme") === "dark" || (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+          Chart.defaults.color = oscuro ? "#EAF0FB" : "#13213D"; Chart.defaults.font.family = "Nunito";
+          graficos.push(new Chart($("#gTemas"), { type: "bar", data: { labels: temas, datasets: [{ label: "Consultas", data: temas.map(function (t) { return porTema[t]; }), backgroundColor: temas.map(function (t, i) { return PALETA[i % PALETA.length]; }), borderRadius: 8 }] },
+            options: { indexAxis: "y", maintainAspectRatio: false, animation: { duration: 1200 }, plugins: { legend: { display: false } },
+              scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { callback: function (v) { var t = this.getLabelForValue(v), max = innerWidth < 640 ? 16 : 34; return t.length > max ? t.slice(0, max - 1) + "…" : t; } } } } } }));
+          graficos.push(new Chart($("#gRoles"), { type: "doughnut", data: { labels: roles, datasets: [{ data: roles.map(function (r) { return porRol[r]; }), backgroundColor: PALETA }] }, options: { maintainAspectRatio: false, animation: { duration: 1200 } } }));
+          graficos.push(new Chart($("#gMeses"), { type: "line", data: { labels: meses, datasets: [{ label: "Consultas", data: meses.map(function (m) { return porMes[m]; }), borderColor: "#1E4FA3", backgroundColor: "rgba(30,79,163,.15)", fill: true, tension: .35 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
+        });
+      }
+      $("#fMes").onchange = dibujar; dibujar();
+      $("#btnCsv").onclick = function () {
+        var csv = "mes;tema;rol;consultas\n" + filas.map(function (f) { return [f.mes, f.tema, f.rol, f.n].join(";"); }).join("\n");
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "consultas_por_tema.csv"; a.click();
+      };
+      $("#btnPlan").onclick = function () {
+        var b = this; b.disabled = true; $("#plan").innerHTML = '<div class="mensaje info">Preparando la propuesta de plan de trabajo…</div>';
+        api({ accion: "plan_trabajo", mes: $("#fMes").value }).then(function (r) {
+          b.disabled = false;
+          $("#plan").innerHTML = r.ok ? '<div class="plan-caja">' + mdSimple(r.texto) + '<p class="ayuda" style="font-size:.8rem">Propuesta generada con IA a partir de ' + r.total + " consultas. Revísela y ajústela con el equipo directivo.</p></div>" : '<div class="mensaje mal">' + esc(r.error) + "</div>";
+        }).catch(function () { b.disabled = false; });
+      };
+    }).catch(function () { });
   }
   function valor(obj, base, k) { return (obj && obj[k]) || (base && base[k]) || ""; }
   function campo(id, etiqueta, val, area, extra) {

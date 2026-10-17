@@ -168,6 +168,21 @@
     [/atras(o|ada|ado)s?\b|llega(r)? tarde/i, "atrasos puntualidad ingreso jornada"]
   ];
   var EVAL = /evaluaci|calific|nota|prueba|promoci|repit|examen|reevalu|eximi|adecuaci|asistencia/i;
+  // Temas generales (solo se cuenta el tema, de forma anónima, para las estadísticas del panel)
+  var TEMAS = [
+    ["Protección de derechos y salud mental", /vulnera|abuso|connotaci[oó]n sexual|agresi[oó]n sexual|suicid|autoles|droga|alcohol|embaraz|maternidad|paternidad|medicament/i],
+    ["Acoso, violencia y maltrato", /acoso|bullying|ciberacoso|ciberbullying|violen|agresi|pelea|golpe|maltrato|discrimin|amenaz/i],
+    ["Faltas, medidas y debido proceso", /falta|sanci[oó]n|sanciones|medida|suspen|expuls|cancelaci[oó]n|condicional|debido proceso|anotaci|disciplin|aula segura/i],
+    ["Inclusión, NEE, PIE y TEA", /\bpie\b|\bnee\b|\btea\b|autis|adecuaci|\bpaci\b|\bpai\b|diversific|diferenciad|desregula|inclusi/i],
+    ["Promoción, asistencia y repitencia", /promoci|repit|asistencia|inasistencia|cierre anticipado|85 ?%/i],
+    ["Evaluación y calificaciones", /evaluaci|calific|\bnotas?\b|prueba|examen|reevalu|eximi|r[uú]brica|instrumento|plagio|copia/i],
+    ["Seguridad escolar, accidentes y salidas", /accidente|\bpise\b|evacuaci|sismo|incendio|salida|gira|emergencia|seguridad/i],
+    ["Apoderados y comunicación", /apoderad|reuni[oó]n|comunicaci|entrevista|padres|familia/i],
+    ["Normas generales (uniforme, horarios, celular)", /uniforme|presentaci[oó]n personal|celular|horario|atraso|puntualidad|recreo|comedor|laboratorio/i],
+    ["PEI, misión y sellos", /\bpei\b|misi[oó]n|visi[oó]n|sello|valores/i]
+  ];
+  function clasificarTema(t) { for (var i = 0; i < TEMAS.length; i++) if (TEMAS[i][1].test(t)) return TEMAS[i][0]; return "Otros temas"; }
+  var RE_DISCIPLINA = /falta|sanci[oó]n|sanciones|medida disciplin|suspen|expuls|cancelaci[oó]n de matr|condicionalidad|debido proceso|aula segura|anotaci/i;
   function buscar(consulta, k) {
     if (!indice) construirIndice();
     var extra = INTENCIONES.filter(function (r) { return r[0].test(consulta); }).map(function (r) { return r[1]; }).join(" ");
@@ -300,7 +315,7 @@
   function funcionesDe(cargo) { var c = catalogoEfectivo().cargos; for (var i = 0; i < c.length; i++) if (c[i].cargo === cargo) return c[i].funciones; return ""; }
   function fijarPerfil(rol, cargo) {
     estado.perfil = { rol: rol || estado.perfil.rol, cargo: cargo || "", funciones: funcionesDe(cargo) };
-    estado.pasoPerfil = cargo ? "listo" : "cargo";
+    estado.pasoPerfil = "listo";
     pintarPerfil();
   }
   function pintarPerfil() {
@@ -322,7 +337,8 @@
   // =====================================================================
   var chat;
   function mascotaHTML(clase) { return '<div class="mascota ' + (clase || "") + '"><div class="encuadre"><img src="estudiante.png" alt=""><span class="boca"></span></div></div>'; }
-  function bajar() { requestAnimationFrame(function () { chat.scrollTop = chat.scrollHeight; }); }
+  function bajar() { setTimeout(function () { chat.scrollTo({ top: chat.scrollHeight, behavior: "auto" }); }, 30); }
+  function irA(m) { setTimeout(function () { chat.scrollTo({ top: Math.max(0, m.offsetTop - 12), behavior: "auto" }); }, 30); }
   function msgIA(html, opciones) {
     var m = el("div", "msg ia"); m.innerHTML = '<div class="avatar">' + mascotaHTML() + '</div><div class="burbuja"><div class="contenido"></div></div>';
     $(".contenido", m).innerHTML = html || ""; chat.appendChild(m); if (!(opciones && opciones.sinBajar)) bajar(); return m;
@@ -359,34 +375,23 @@
       "<h1>¡Hola! Soy Timón 👋</h1>" +
       "<p>Soy el asistente virtual del <b>" + esc(info.nombre) + "</b>, " + esc(info.dependencia) + ". Te ayudo a revisar y aplicar el <b>Reglamento Interno</b> y el <b>Reglamento de Evaluación 2026</b>, citando siempre la fuente.</p>" +
       "</div>" +
-      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud de estudiantes, familias o funcionarios. Si los detecto, te propondré una versión anónima. No guardo el contenido de tus consultas.</div></div>";
+      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud de estudiantes, familias o funcionarios. Si los detecto, te propondré una versión anónima. No guardo el contenido de tus consultas; solo se cuenta, de forma anónima, el tema general y el rol para estadísticas del colegio.</div></div>";
     chat.appendChild(w);
     setTimeout(function () { var mc = $(".mascota", w); if (mc) { mc.classList.remove("hablando"); mc.classList.add("saluda"); } }, 3800);
     preguntarRol(false);
   }
   function preguntarRol(cambio) {
     estado.pasoPerfil = "rol";
-    var m = msgIA("<p>" + (cambio ? "Claro, actualicemos tu perfil." : "Para ajustar mis respuestas, ¿cuál es tu <b>rol</b> en el colegio?") + " Puedes tocar una opción o escribirlo con tus palabras (por ejemplo: <i>“soy jefa de UTP”</i>). También puedes hacer tu pregunta directamente.</p>", { sinBajar: !cambio });
+    var m = msgIA("<p>" + (cambio ? "Claro, ¿cuál es tu <b>rol</b>?" : "Para ajustar mis respuestas, ¿cuál es tu <b>rol</b> en el colegio?") + " Toca una opción o escríbelo con tus palabras. También puedes hacer tu pregunta directamente.</p>", { sinBajar: !cambio });
     $(".contenido", m).appendChild(chips(BASE.roles.concat(["Otro: escribir"]), function (v, libre) {
       if (libre) { var d = detectarPerfil("soy " + v); if (d) { fijarPerfil(d.rol, d.cargo || v); confirmarPerfil(); } else { fijarPerfil(v, v); confirmarPerfil(); } return; }
-      fijarPerfil(v, ""); preguntarCargo();
-    }));
-    hablar(m);
-  }
-  function preguntarCargo() {
-    var rol = estado.perfil.rol;
-    var lista = catalogoEfectivo().cargos.filter(function (c) { return c.rol === rol; }).map(function (c) { return c.cargo; });
-    var m = msgIA("<p>¡Gracias! ¿Y cuál es tu <b>cargo o función</b>?</p>");
-    $(".contenido", m).appendChild(chips(lista.concat(["Otro: escribir", "Prefiero no indicarlo"]), function (v) {
-      if (v === "Prefiero no indicarlo") { estado.pasoPerfil = "listo"; pintarPerfil(); confirmarPerfil(); return; }
-      fijarPerfil(rol, v); confirmarPerfil();
+      fijarPerfil(v, ""); confirmarPerfil();
     }));
     hablar(m);
   }
   function confirmarPerfil() {
     var p = estado.perfil;
-    var m = msgIA("<p>¡Perfecto! Te responderé como <b>" + esc(p.cargo || p.rol || "integrante de la comunidad") + "</b>" +
-      (p.funciones ? ", considerando tus funciones" : "") + ", el Reglamento Interno, el Reglamento de Evaluación 2026 y el PEI. ¿En qué te ayudo? Aquí tienes algunas ideas:</p>");
+    var m = msgIA("<p>¡Perfecto! Te responderé según tu rol de <b>" + esc(p.cargo || p.rol || "integrante de la comunidad") + "</b>, con el Reglamento Interno y el Reglamento de Evaluación 2026. ¿En qué te ayudo? Aquí tienes algunas ideas:</p>");
     var sug = SUGERENCIAS[p.rol] || SUGERENCIAS[""];
     $(".contenido", m).appendChild(chips(sug, function (v) { enviarConsulta(v); }, { multiple: true }));
     hablar(m);
@@ -441,7 +446,7 @@
     return bl;
   }
   function enLinea(s) {
-    var x = esc(s);
+    var x = esc(String(s).replace(/<br\s*\/?>\s*[-•*]?\s*/gi, function (m) { return /[-•*]/.test(m) ? "\n• " : "\n"; }));
     x = x.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, t, u) {
       var url = u.replace(/&amp;/g, "&");
       return hostPermitido(url) ? '<a class="ext" href="' + esc(url) + '" target="_blank" rel="noopener">' + t + "</a>" : t;
@@ -453,7 +458,7 @@
       return pre + '<a class="ext" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(corto) + "</a>";
     });
     x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/`([^`]+)`/g, "<code>$1</code>");
-    return x.replace(/\n/g, "<br>");
+    return x.replace(/(^|\n)\s*[-*]\s+/g, "$1• ").replace(/\n/g, "<br>");
   }
   var ICONOS_TITULO = [
     [/protocolo|seguridad|riesgo|denuncia|urgente|alerta|importante|precauc/i, "escudo", "#D64545"],
@@ -478,7 +483,7 @@
         case "hr": return "<hr>";
         case "ul": case "ol": return "<" + b.t + ">" + b.items.map(function (it) { return "<li" + (it.sub ? ' style="margin-left:18px"' : "") + ">" + enLinea(it.x) + "</li>"; }).join("") + "</" + b.t + ">";
         case "tabla": return '<div class="tabla-envoltura"><table><thead><tr>' + b.filas[0].map(function (c) { return "<th>" + enLinea(c) + "</th>"; }).join("") + "</tr></thead><tbody>" +
-          b.filas.slice(1).map(function (f) { return "<tr>" + f.map(function (c) { return "<td>" + enLinea(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>";
+          b.filas.slice(1).map(function (f) { return "<tr>" + f.map(function (c, ci) { return '<td data-label="' + esc(String(b.filas[0][ci] || "").replace(/[*_`]/g, "")) + '">' + enLinea(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>";
         case "graf": return '<div class="grafico-hueco" data-i="' + idx + '"></div>';
         default: return "";
       }
@@ -486,7 +491,7 @@
   }
   function textoPlano(texto) {
     return aBloques(texto).map(function (b) {
-      var limpio = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, function (m, t, u) { return hostPermitido(u) ? t + " (" + u + ")" : t; }).replace(/`/g, ""); };
+      var limpio = function (s) { return s.replace(/<br\s*\/?>/gi, " ").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, function (m, t, u) { return hostPermitido(u) ? t + " (" + u + ")" : t; }).replace(/`/g, ""); };
       switch (b.t) {
         case "h": return "\n" + limpio(b.x).toUpperCase();
         case "p": case "cita": case "pre": return limpio(b.x);
@@ -582,12 +587,10 @@
     if (d && estado.pasoPerfil !== "listo" || (d && /^\s*(soy|trabajo como|me desempeño como)\b/i.test(texto))) {
       var resto = texto.replace(/^\s*(hola[,!.\s]*)?(soy|trabajo como|me desempeño como)\s+[^,.;?¿]+[,.;]?\s*/i, "").trim();
       msgYo(texto); fijarPerfil(d.rol, d.cargo);
-      if (!d.cargo) { preguntarCargo(); return; }
       if (resto.length > 12 && /[?¿]|\b(qu[eé]|c[oó]mo|cu[aá]l|cu[aá]ndo|d[oó]nde|necesito|ayuda|expl|resum)/i.test(resto)) { enviarConsulta(resto, { sinEco: true }); }
       else confirmarPerfil();
       return;
     }
-    if (estado.asistente && estado.asistente.esperando) { msgYo(texto); avanzarAsistente(texto); return; }
     enviarConsulta(texto);
   }
   function mostrarAlertaPrivacidad(original, priv) {
@@ -609,14 +612,23 @@
     if (estado.pasoPerfil !== "listo") estado.pasoPerfil = "listo"; // nunca obligamos a marcar el perfil
     var consultaBusqueda = opts.esRespuesta ? ultimaConsulta() + " " + texto : texto;
     var frags = buscar(consultaBusqueda, 5);
+    var tema = clasificarTema(consultaBusqueda), disciplinario = tema === "Faltas, medidas y debido proceso" || RE_DISCIPLINA.test(consultaBusqueda);
     var normativa = normativaPara(consultaBusqueda, 5);
-    var pensando = msgIA('<div class="escribiendo"><i></i><i></i><i></i><span>Revisando los reglamentos…</span></div>');
-    $(".mascota", pensando).classList.add("hablando");
+    if (disciplinario) ["20370", "20536", "21128", "21430"].forEach(function (n) {
+      var x = BASE.normativa.filter(function (k) { return k.url.indexOf("idLey=" + n) > 0; })[0];
+      if (x && normativa.indexOf(x) < 0) normativa.push(x);
+    });
+    // Mensaje de espera: Timón (cuerpo completo) "habla" mientras se prepara la respuesta
+    var pensando = el("div", "msg ia pensando");
+    pensando.innerHTML = '<div class="avatar grande">' + mascotaHTML("hablando") + '</div><div class="burbuja"><div class="escribiendo"><i></i><i></i><i></i><span>Revisando el Reglamento Interno…</span></div></div>';
+    chat.appendChild(pensando); bajar();
+    var frasesEspera = ["Revisando el Reglamento Interno…", "Buscando en el Reglamento de Evaluación 2026…", disciplinario ? "Verificando que se ajuste a la normativa chilena…" : "Revisando la normativa vigente…", "Redactando la respuesta…"], nf = 0;
+    var relojEspera = setInterval(function () { nf = (nf + 1) % frasesEspera.length; var s = $(".escribiendo span", pensando); if (s) s.textContent = frasesEspera[nf]; }, 2600);
     estado.ocupado = true; $("#btnEnviar").disabled = true;
 
     var cat = catalogoEfectivo();
     var payload = {
-      accion: "chat", consulta: texto, modo: opts.modo || (estado.asistente && estado.asistente.listo ? "material" : "chat"), web: estado.web,
+      accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario,
       historial: estado.mensajes.slice(-6).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
       fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; }),
@@ -625,7 +637,7 @@
       info: cat.info, fecha: new Date().toISOString().slice(0, 10)
     };
     var fin = function (resp, local) {
-      estado.ocupado = false; $("#btnEnviar").disabled = false; pensando.remove();
+      clearInterval(relojEspera); estado.ocupado = false; $("#btnEnviar").disabled = false; pensando.remove();
       estado.mensajes.push({ role: "user", content: texto });
       if (!local) estado.mensajes.push({ role: "assistant", content: resp.texto });
       mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
@@ -721,11 +733,24 @@
     // Acciones
     var acc = el("div", "acciones");
     [["ojo", "Ver PDF", function () { vistaPreviaPDF(idx); }], ["descarga", "Descargar PDF", function () { descargarPDF(idx); }],
-     ["compartir", "Compartir", function () { compartir(idx); }], ["copiar", "Copiar", function () { copiar(idx); }], ["volumen", "Escuchar", function () { escuchar(idx, m); }]]
+     ["compartir", "Compartir", function () { compartir(idx); }], ["copiar", "Copiar", function () { copiar(idx); }], ["volumen", "Escuchar", function () { escuchar(idx, m); }], ["nuevo", "Nueva consulta", nuevaConsulta]]
       .forEach(function (a) { var b = el("button", "accion", ico(a[0]) + esc(a[1])); b.type = "button"; b.onclick = a[2]; acc.appendChild(b); });
     cont.appendChild(acc);
-    hablar(m, Math.min(5000, 900 + r.texto.length * 4));
-    m.scrollIntoView({ behavior: "smooth", block: "start" });
+    irA(m);
+    revelar(m, cont);
+  }
+  // Muestra la respuesta de a poco mientras Timón "habla" (mueve la boca y el cuerpo)
+  function revelar(m, cont) {
+    var partes = [].slice.call(cont.children), mc = $(".mascota", m);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    partes.forEach(function (p) { p.classList.add("por-mostrar"); });
+    if (mc) mc.classList.add("hablando");
+    var k = 0;
+    (function siguiente() {
+      if (k >= partes.length) { if (mc) setTimeout(function () { mc.classList.remove("hablando"); }, 500); return; }
+      var p = partes[k++]; p.classList.remove("por-mostrar"); p.classList.add("mostrado");
+      setTimeout(siguiente, Math.min(900, 160 + (p.textContent || "").length * 2.2));
+    })();
   }
   function fragmentosCitados(r) {
     var t = r.texto, out = [];
@@ -738,39 +763,6 @@
     });
     if (!out.length) out = r.frags.slice(0, r.local ? 3 : 2).map(function (x) { return x.f; });
     return out;
-  }
-
-  // =====================================================================
-  //  ASISTENTE PARA DISEÑAR MATERIALES (paso a paso u opción directa)
-  // =====================================================================
-  var PASOS_MATERIAL = [
-    { clave: "tipo", pregunta: "¿Qué material necesitas diseñar?", opciones: ["Guía de aprendizaje", "Evaluación o prueba", "Rúbrica o lista de cotejo", "Planificación de clase", "Comunicado a apoderados", "Acta o registro de convivencia", "Taller o presentación", "Otro: escribir"] },
-    { clave: "nivel", pregunta: "¿Para qué nivel o destinatarios?", opciones: ["Educación Parvularia", "1° a 4° básico", "5° a 8° básico", "1° a 4° medio", "Docentes o funcionarios", "Apoderados", "Otro: escribir"] },
-    { clave: "tema", pregunta: "¿Cuál es la asignatura, tema u objetivo? (puedes escribirlo)", opciones: ["Convivencia escolar", "Evaluación formativa", "Lenguaje", "Matemática", "Ciencias", "Historia", "Otro: escribir"] },
-    { clave: "forma", pregunta: "¿Cómo prefieres trabajarlo?", opciones: ["Paso a paso conmigo", "Directo: entrégamelo completo"] }
-  ];
-  function iniciarAsistente() {
-    estado.asistente = { paso: 0, datos: {}, esperando: true };
-    var m = msgIA("<h3>" + '<span class="ico-titulo" style="background:#2E9BD6">' + ico("magia") + "</span>Asistente de materiales</h3><p>Te haré hasta 4 preguntas rápidas. Si prefieres, escribe <b>“hazlo directo”</b> y lo preparo con lo que tengamos.</p>");
-    hablar(m); preguntarPasoAsistente();
-  }
-  function preguntarPasoAsistente() {
-    var a = estado.asistente, p = PASOS_MATERIAL[a.paso];
-    var m = msgIA("<p><b>" + (a.paso + 1) + "/4.</b> " + esc(p.pregunta) + "</p>");
-    $(".contenido", m).appendChild(chips(p.opciones, function (v) { msgYo(v); avanzarAsistente(v); }));
-  }
-  function avanzarAsistente(v) {
-    var a = estado.asistente; if (!a) return;
-    if (/hazlo directo|directo|sin preguntas/i.test(v) && a.paso < 3) { a.datos.forma = "Directo: entrégamelo completo"; a.paso = 4; }
-    else { a.datos[PASOS_MATERIAL[a.paso].clave] = v; a.paso++; }
-    if (a.paso < PASOS_MATERIAL.length) { preguntarPasoAsistente(); return; }
-    a.esperando = false; a.listo = true;
-    var d = a.datos, directo = /directo/i.test(d.forma || "");
-    var pedido = "Diseña este material: " + (d.tipo || "material pedagógico") + (d.nivel ? ". Destinatarios: " + d.nivel : "") + (d.tema ? ". Tema u objetivo: " + d.tema : "") + ". " +
-      (directo ? "Entrégalo completo y listo para usar, alineado con el Reglamento de Evaluación 2026 y el PEI." :
-        "Trabajémoslo paso a paso: propón primero la estructura y el objetivo, y luego pregúntame con opciones cómo seguir.");
-    enviarConsulta(pedido, { modo: "material", sinEco: true });
-    estado.asistente = null;
   }
 
   // =====================================================================
@@ -788,7 +780,7 @@
       .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ•–—˜™š›œžŸ]/g, "");
   }
   function enlacePlano(m, t, u) { return hostPermitido(u) ? t + " (" + u + ")" : t; }
-  function limpiaMd(s) { return latin(String(s || "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|[^*])\*([^*]+)\*/g, "$1$2").replace(/`/g, "").replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, enlacePlano)); }
+  function limpiaMd(s) { return latin(String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|[^*])\*([^*]+)\*/g, "$1$2").replace(/`/g, "").replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, enlacePlano)); }
   function crearPDF(idx) {
     var r = estado.respuestas[idx];
     return Promise.all([cargarScript(CDN.jspdf), obtenerLogo()]).then(function (res) {
@@ -1033,7 +1025,7 @@
         "\n\n## Misión\n" + p.mision + "\n\n## Visión\n" + p.vision + "\n\n## Sellos educativos\n" + p.sellos + "\n\n## Valores\n" + p.valores +
         (p.historia ? "\n\n## Historia\n" + p.historia : "") + "\n\n*Fuente: " + p.fuente + "*")) + "</div>";
     }
-    abrirModal(ico("libro") + " Biblioteca", html, [{ texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
+    abrirModal(ico("libro") + " Biblioteca", html, [{ texto: "Panel de administración", icono: "usuario", clase: "sec", fn: function () { location.href = "admin.html"; } }, { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
     document.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { biblioteca(b.getAttribute("data-p")); }; });
     document.querySelectorAll("[data-ver]").forEach(function (b) { b.onclick = function () { abrirDocumento(acciones[+b.getAttribute("data-ver")]); }; });
   }
@@ -1085,17 +1077,25 @@
     navigator.serviceWorker.addEventListener("controllerchange", function () { if (!recargado) { recargado = true; location.reload(); } });
   }
 
+  // Nueva consulta: limpia la conversación (se mantiene el rol elegido)
+  function nuevaConsulta() {
+    if (estado.ocupado) return;
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    estado.mensajes = []; estado.respuestas = [];
+    if (!estado.perfil.rol) { bienvenida(); return; }
+    chat.innerHTML = "";
+    var m = msgIA("<p><b>¡Nueva consulta!</b> Sigo considerando tu rol de <b>" + esc(estado.perfil.cargo || estado.perfil.rol) + "</b>. Escribe tu pregunta o elige una idea:</p>");
+    $(".contenido", m).appendChild(chips(SUGERENCIAS[estado.perfil.rol] || SUGERENCIAS[""], function (v) { enviarConsulta(v); }, { multiple: true }));
+    hablar(m); $("#entrada").focus();
+  }
+
   function iniciar() {
     chat = $("#chat");
-    $("#btnBiblioteca").innerHTML = ico("libro"); $("#btnNueva").innerHTML = ico("nuevo"); $("#btnEnviar").innerHTML = ico("enviar"); $("#btnWeb").innerHTML = ico("globo");
+    $("#btnBiblioteca").innerHTML = ico("libro"); $("#btnNueva").innerHTML = ico("nuevo") + '<span class="txt-largo">Nueva consulta</span><span class="txt-corto">Nueva</span>'; $("#btnEnviar").innerHTML = ico("enviar"); $("#btnWeb").innerHTML = ico("globo");
     aplicarTema(document.documentElement.getAttribute("data-theme"));
     $("#btnTema").onclick = function () { var t = oscuro() ? "light" : "dark"; try { localStorage.setItem("tema", t); } catch (e) { } aplicarTema(t); };
     $("#btnBiblioteca").onclick = function () { biblioteca(); };
-    $("#btnNueva").onclick = function () {
-      if (estado.mensajes.length && !confirm("¿Iniciar una nueva conversación? Se borrará esta conversación y tu perfil (no se guardan).")) return;
-      if (window.speechSynthesis) speechSynthesis.cancel();
-      estado.perfil = { rol: "", cargo: "", funciones: "" }; estado.mensajes = []; estado.respuestas = []; estado.asistente = null; pintarPerfil(); bienvenida();
-    };
+    $("#btnNueva").onclick = nuevaConsulta;
     $("#btnWeb").onclick = function () {
       estado.web = !estado.web; this.setAttribute("aria-pressed", estado.web);
       toast(estado.web ? "Búsqueda web activada (solo fuentes oficiales: mineduc.cl, bcn.cl, supereduc.cl…)" : "Búsqueda web desactivada", 3200);
@@ -1109,7 +1109,7 @@
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("#modal").hidden) cerrarModal(); });
     // Atajos
     var at = $("#atajos");
-    [["magia", "Diseñar material", iniciarAsistente], ["escudo", "Protocolos", function () { enviarConsulta("¿Qué protocolos de actuación tiene el Reglamento Interno y quién es responsable de cada uno?"); }],
+    [["escudo", "Protocolos", function () { enviarConsulta("¿Qué protocolos de actuación tiene el Reglamento Interno y quién es responsable de cada uno?"); }],
      ["check", "Evaluación y promoción", function () { enviarConsulta("Resume los requisitos de promoción del Reglamento de Evaluación 2026"); }],
      ["usuarios", "Faltas y medidas", function () { enviarConsulta("¿Cómo se gradúan las faltas y qué medidas contempla el Reglamento Interno?"); }],
      ["libro", "Biblioteca", function () { biblioteca(); }]].forEach(function (a) {
