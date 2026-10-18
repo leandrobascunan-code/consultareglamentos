@@ -81,7 +81,8 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .mascota{animation:respira 3.4s ease-in-out infinite;transform-origin:50% 100%;will-change:transform}
 @keyframes respira{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1.5px) scale(1.01)}}
 /* Brazos: capas separadas que giran desde el codo */
-.encuadre .brazo{position:absolute;inset:0;width:100%;height:auto;pointer-events:none;will-change:transform}
+.encuadre .brazo{position:absolute;top:0;left:0;width:100%;height:auto;pointer-events:none;will-change:transform;display:none}
+.brazos-listos .encuadre .brazo{display:block}
 .encuadre .brazo.izq{transform-origin:26% 47.3%;animation:reposo-izq 3.4s ease-in-out infinite}
 .encuadre .brazo.der{transform-origin:74% 47.3%;animation:reposo-der 3.4s ease-in-out infinite}
 @keyframes reposo-izq{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}

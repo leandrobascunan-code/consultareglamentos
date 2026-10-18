@@ -343,10 +343,27 @@
   //  RENDER DE MENSAJES
   // =====================================================================
   var chat;
+  // Brazos móviles: se activan solo si cargan las 3 piezas (cuerpo y dos brazos).
+  // Mientras tanto, o si alguna falla, se muestra el estudiante completo (sin cortes).
+  var brazosListos = false;
+  function prepararBrazos() {
+    var piezas = ["estudiante-cuerpo.png", "brazo-izq.png", "brazo-der.png"], listas = 0, error = false;
+    piezas.forEach(function (src) {
+      var im = new Image();
+      im.onload = function () {
+        if (++listas === piezas.length && !error) {
+          brazosListos = true; document.documentElement.classList.add("brazos-listos");
+          document.querySelectorAll(".encuadre img.cuerpo").forEach(function (i) { i.src = "estudiante-cuerpo.png"; });
+        }
+      };
+      im.onerror = function () { error = true; };
+      im.src = src;
+    });
+  }
   // Timón: imagen + boca animada + párpados (cada copia parpadea en un momento distinto)
   function mascotaHTML(clase) {
     var d = "animation-delay:" + (Math.random() * 3).toFixed(2) + "s", d2 = "animation-delay:-" + (Math.random() * 2).toFixed(2) + "s";
-    return '<div class="mascota ' + (clase || "") + '" style="' + d2 + '"><div class="encuadre"><img src="estudiante.png" alt="">' +
+    return '<div class="mascota ' + (clase || "") + '" style="' + d2 + '"><div class="encuadre"><img class="cuerpo" src="' + (brazosListos ? "estudiante-cuerpo.png" : "estudiante.png") + '" alt="">' +
       '<img class="brazo izq" src="brazo-izq.png" alt=""><img class="brazo der" src="brazo-der.png" alt="">' +
       '<span class="boca"></span><span class="parpado izq" style="' + d + '"></span><span class="parpado der" style="' + d + '"></span></div></div>';
   }
@@ -413,6 +430,14 @@
   // =====================================================================
   //  MARKDOWN → bloques (sirve para HTML y para el PDF)
   // =====================================================================
+  // Lee el bloque de preguntas aunque la IA cometa errores menores de formato
+  function leerOpciones(txt) {
+    var limpio = String(txt).replace(/[“”]/g, '"').replace(/,\s*([\]}])/g, "$1").trim();
+    try { var j = JSON.parse(limpio); if (Array.isArray(j)) j = { preguntas: j }; if (j && (j.preguntas || j.questions)) return j; } catch (e) { }
+    var preguntas = [], re = /"(?:pregunta|texto)"\s*:\s*"([^"]+)"\s*,\s*"opciones"\s*:\s*\[([^\]]*)\]/g, m;
+    while ((m = re.exec(limpio))) preguntas.push({ pregunta: m[1], opciones: (m[2].match(/"([^"]+)"/g) || []).map(function (s) { return s.slice(1, -1); }) });
+    return preguntas.length ? { preguntas: preguntas } : null;
+  }
   function aBloques(texto) {
     var lineas = String(texto || "").replace(/\r/g, "").split("\n"), bl = [], i = 0, parrafo = [];
     function cerrarP() { if (parrafo.length) { bl.push({ t: "p", x: parrafo.join("\n") }); parrafo = []; } }
@@ -424,7 +449,7 @@
         while (i < lineas.length && !/^\s*```\s*$/.test(lineas[i])) { cuerpo.push(lineas[i]); i++; }
         i++; var txt = cuerpo.join("\n");
         if (/^(grafico|gráfico|chart)$/.test(tipo)) { try { bl.push({ t: "graf", d: JSON.parse(txt) }); } catch (e) { } }
-        else if (/^(opciones|preguntas)$/.test(tipo)) { try { bl.push({ t: "opc", d: JSON.parse(txt) }); } catch (e) { } }
+        else if (/^(opciones|preguntas)$/.test(tipo)) { var op = leerOpciones(txt); if (op) bl.push({ t: "opc", d: op }); }
         else bl.push({ t: "pre", x: txt });
         continue;
       }
@@ -471,7 +496,33 @@
       return pre + '<a class="ext" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(corto) + "</a>";
     });
     x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/`([^`]+)`/g, "<code>$1</code>");
+    x = enlazarNormas(x);
     return x.replace(/(^|\n)\s*[-*]\s+/g, "$1• ").replace(/\n/g, "<br>");
+  }
+  // Convierte en enlace (BCN) el nombre de una ley o código mencionado sin enlace, en la misma frase
+  var NORMAS_AUTO = null;
+  function enlazarNormas(html) {
+    if (!NORMAS_AUTO) {
+      NORMAS_AUTO = [];
+      BASE.normativa.forEach(function (n) {
+        var mLey = n.titulo.match(/^Ley (\d+)\.(\d+)/), mDec = n.titulo.match(/^Decreto (\d+)\/(\d{4})/);
+        if (mLey) NORMAS_AUTO.push([new RegExp("\\b(Ley\\s+(?:N[°º]\\s*)?" + mLey[1] + "\\.?" + mLey[2] + ")\\b", "g"), n.url]);
+        else if (mDec) NORMAS_AUTO.push([new RegExp("\\b(Decreto\\s+(?:N[°º]\\s*)?" + mDec[1] + "(?:\\s*(?:/|de)\\s*" + mDec[2] + ")?)\\b", "g"), n.url]);
+        else if (/^Código Procesal Penal/.test(n.titulo)) NORMAS_AUTO.unshift([/\b(Código Procesal Penal)\b/g, n.url]);
+        else if (/^Código Penal/.test(n.titulo)) NORMAS_AUTO.push([/\b(Código Penal)\b/g, n.url]);
+        else if (/^Código Civil/.test(n.titulo)) NORMAS_AUTO.push([/\b(Código Civil)\b/g, n.url]);
+      });
+    }
+    return html.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/).map(function (parte) {
+      if (/^<a\b/.test(parte)) return parte;
+      NORMAS_AUTO.forEach(function (r) {
+        parte = parte.replace(r[0], function (m, t, pos, todo) {
+          if (/Procesal\s*$/.test(todo.slice(Math.max(0, pos - 9), pos))) return m;            // evita "Código Penal" dentro de "Código Procesal Penal"
+          return '<a class="ext" href="' + r[1] + '" target="_blank" rel="noopener">' + t + "</a>";
+        });
+      });
+      return parte;
+    }).join("");
   }
   var ICONOS_TITULO = [
     [/delito|denuncia/i, "alerta", "#8E1B1B"],
@@ -573,17 +624,15 @@
   // ---------- Preguntas con opciones que propone la IA ----------
   function pintarOpciones(cont, d) {
     var preguntas = (d && (d.preguntas || d.questions)) || []; if (!preguntas.length) return;
-    var respuestas = new Array(preguntas.length), caja = el("div", "opciones-ia");
-    preguntas.slice(0, 3).forEach(function (q, k) {
-      caja.appendChild(el("p", "pregunta-opc", esc(q.pregunta || q.texto || "")));
-      var ops = (q.opciones || []).slice(0, 6); if (!ops.some(function (o) { return /^Otro/.test(o); })) ops.push("Otro: escribir");
+    var caja = el("div", "opciones-ia");
+    // Cada pregunta es independiente: al tocar una opción se envía de inmediato
+    preguntas.slice(0, 3).forEach(function (q) {
+      var pregunta = String(q.pregunta || q.texto || "").trim();
+      caja.appendChild(el("p", "pregunta-opc", esc(pregunta)));
+      var ops = (q.opciones || []).map(String).filter(Boolean).slice(0, 6); if (!ops.some(function (o) { return /^Otro/.test(o); })) ops.push("Otro: escribir");
       caja.appendChild(chips(ops, function (v) {
-        respuestas[k] = v;
-        var faltan = preguntas.slice(0, 3).some(function (x, j) { return !respuestas[j]; });
-        if (!faltan) {
-          var txt = preguntas.slice(0, 3).map(function (x, j) { return (preguntas.length > 1 ? (j + 1) + ") " : "") + (x.pregunta || x.texto) + " → " + respuestas[j]; }).join("\n");
-          enviarConsulta(txt, { esRespuesta: true });
-        }
+        if (estado.ocupado) { toast("Espera que termine la respuesta anterior"); return; }
+        enviarConsulta(pregunta ? pregunta + " " + v : v, { esRespuesta: true });
       }));
     });
     cont.appendChild(caja);
@@ -629,7 +678,7 @@
     if (!opts.sinEco) msgYo(texto);
     if (estado.pasoPerfil !== "listo") estado.pasoPerfil = "listo"; // nunca obligamos a marcar el perfil
     var consultaBusqueda = opts.esRespuesta ? ultimaConsulta() + " " + texto : texto;
-    var frags = buscar(consultaBusqueda, 4);
+    var frags = buscar(consultaBusqueda, 5);
     var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
     var disciplinario = delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
@@ -661,9 +710,9 @@
     var cat = catalogoEfectivo();
     var payload = {
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
-      historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 900) }; }),
+      historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
-      fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1150) }; }),
+      fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; }),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
       info: cat.info, fecha: new Date().toISOString().slice(0, 10)
@@ -705,7 +754,8 @@
     var md = [];
     md.push("## Respuesta desde la base local");
     md.push(motivo === "sin-servidor" ? "El asistente con IA aún no está conectado, así que te muestro lo que dicen los documentos del colegio sobre tu consulta:" :
-      "No pude conectarme con el servicio de IA en este momento (puede estar saturado o no hay internet). Te muestro lo más pertinente de los documentos del colegio:");
+      (/l[ií]mite|ocupado|saturad/i.test(motivo || "") ? motivo.replace(/\.?\s*Te muestro.*$/, ".") + " Mientras tanto, esto es lo más pertinente de los documentos del colegio:" :
+        "No pude conectarme con el servicio de IA en este momento (puede no haber internet). Te muestro lo más pertinente de los documentos del colegio:"));
     if (!frags.length) md.push("No encontré fragmentos relacionados en los reglamentos. Prueba con otras palabras (por ejemplo: *inasistencia a prueba*, *faltas graves*, *promoción*).");
     frags.slice(0, 3).forEach(function (r) {
       md.push("### " + (r.f.s || (docBase(r.f.d) || {}).corto || "Fragmento"));
@@ -1174,6 +1224,7 @@
      ["libro", "Biblioteca", function () { biblioteca(); }]].forEach(function (a) {
       var b = el("button", "chip", ico(a[0]) + esc(a[1])); b.type = "button"; b.onclick = function () { if (!estado.ocupado) a[2](); }; at.appendChild(b);
     });
+    prepararBrazos();
     bienvenida();
     cargarCatalogo();
     registrarSW();
