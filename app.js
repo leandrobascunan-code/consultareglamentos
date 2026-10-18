@@ -461,6 +461,10 @@
     return x.replace(/(^|\n)\s*[-*]\s+/g, "$1• ").replace(/\n/g, "<br>");
   }
   var ICONOS_TITULO = [
+    [/ajusta a derecho|a derecho/i, "balanza", "#C0392B"],
+    [/en breve|resumen/i, "bombilla", "#D9A400"],
+    [/profundizar/i, "timon", "#0E2A68"],
+    [/qu[eé] establece/i, "libro", "#0E2A68"],
     [/protocolo|seguridad|riesgo|denuncia|urgente|alerta|importante|precauc/i, "escudo", "#D64545"],
     [/paso|procedimiento|c[oó]mo|etapa|acciones|qu[eé] hacer/i, "lista", "#1E4FA3"],
     [/evaluaci|nota|calific|promoci|asistencia|reevalu/i, "check", "#1E8E5A"],
@@ -476,8 +480,8 @@
   function bloquesHTML(bl) {
     return bl.map(function (b, idx) {
       switch (b.t) {
-        case "h": var ic = iconoTitulo(b.x); return "<h" + b.n + '><span class="ico-titulo" style="background:' + ic[2] + '">' + ico(ic[1]) + "</span>" + enLinea(b.x.replace(/^#+\s*/, "")) + "</h" + b.n + ">";
-        case "p": return "<p>" + enLinea(b.x) + "</p>";
+        case "h": var ic = iconoTitulo(b.x); return "<h" + b.n + (/profundizar/i.test(b.x) ? ' class="titulo-profundizar"' : "") + '><span class="ico-titulo" style="background:' + ic[2] + '">' + ico(ic[1]) + "</span>" + enLinea(b.x.replace(/^#+\s*/, "")) + "</h" + b.n + ">";
+        case "p": return (idx > 0 && bl[idx - 1].t === "h" && /en breve|resumen/i.test(bl[idx - 1].x)) ? '<p class="en-breve">' + enLinea(b.x) + "</p>" : "<p>" + enLinea(b.x) + "</p>";
         case "pre": return "<p><code>" + esc(b.x).replace(/\n/g, "<br>") + "</code></p>";
         case "cita": return "<blockquote>" + enLinea(b.x) + "</blockquote>";
         case "hr": return "<hr>";
@@ -740,16 +744,39 @@
     revelar(m, cont);
   }
   // Muestra la respuesta de a poco mientras Timón "habla" (mueve la boca y el cuerpo)
+  // La respuesta se "escribe" de arriba hacia abajo mientras Timón habla.
+  // Tocar la respuesta la muestra completa de inmediato.
   function revelar(m, cont) {
     var partes = [].slice.call(cont.children), mc = $(".mascota", m);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !partes.length) return;
+    var largos = partes.map(function (p) { return Math.max(20, (p.textContent || "").length); });
+    var total = largos.reduce(function (a, b) { return a + b; }, 0);
+    var tiempo = Math.min(16000, Math.max(2500, total * 9));        // duración total de la "escritura"
+    var seguir = true, terminado = false, k = 0, reloj = null;
     partes.forEach(function (p) { p.classList.add("por-mostrar"); });
+    m.classList.add("escribiendo-respuesta");
     if (mc) mc.classList.add("hablando");
-    var k = 0;
+    function fin() {
+      if (terminado) return; terminado = true; clearTimeout(reloj);
+      partes.forEach(function (p) { p.classList.remove("por-mostrar"); });
+      m.classList.remove("escribiendo-respuesta");
+      if (mc) setTimeout(function () { mc.classList.remove("hablando"); }, 400);
+      chat.removeEventListener("wheel", parar); chat.removeEventListener("touchmove", parar);
+    }
+    function parar() { seguir = false; }
+    chat.addEventListener("wheel", parar, { passive: true }); chat.addEventListener("touchmove", parar, { passive: true });
+    m.addEventListener("click", fin, { once: true });
     (function siguiente() {
-      if (k >= partes.length) { if (mc) setTimeout(function () { mc.classList.remove("hablando"); }, 500); return; }
-      var p = partes[k++]; p.classList.remove("por-mostrar"); p.classList.add("mostrado");
-      setTimeout(siguiente, Math.min(900, 160 + (p.textContent || "").length * 2.2));
+      if (terminado) return;
+      if (k >= partes.length) { fin(); return; }
+      var p = partes[k], dur = Math.max(260, tiempo * largos[k] / total); k++;
+      p.style.setProperty("--dur", dur + "ms");
+      p.classList.remove("por-mostrar"); p.classList.add("escribiendo-bloque");
+      if (seguir) {
+        var r = p.getBoundingClientRect(), c = chat.getBoundingClientRect();
+        if (r.bottom > c.bottom - 10 && k > 1) chat.scrollTop += Math.min(r.bottom - c.bottom + 30, Math.max(0, r.top - c.top - 70));
+      }
+      reloj = setTimeout(siguiente, dur);
     })();
   }
   function fragmentosCitados(r) {
@@ -822,7 +849,8 @@
       // Contenido
       var graficos = (r.graficos || []).slice();
       aBloques(r.texto).forEach(function (b) {
-        if (b.t === "h") { y += 2; espacio(12); texto(limpiaMd(b.x), { negrita: true, tam: b.n === 2 ? 12.5 : 11.5, color: AZUL, despues: 1 }); }
+        if (b.t === "h" && /profundizar/i.test(b.x)) { /* las preguntas para profundizar no van en el PDF */ }
+        else if (b.t === "h") { y += 2; espacio(12); texto(limpiaMd(b.x), { negrita: true, tam: b.n === 2 ? 12.5 : 11.5, color: AZUL, despues: 1 }); }
         else if (b.t === "p" || b.t === "pre") texto(limpiaMd(b.x));
         else if (b.t === "cita") { texto(limpiaMd(b.x), { cursiva: true, sangria: 5, color: [60, 70, 95] }); }
         else if (b.t === "ul" || b.t === "ol") { b.items.forEach(function (it, k) { texto(limpiaMd(it.x), { sangria: it.sub ? 11 : 6, vineta: b.t === "ol" ? (k + 1) + "." : "•", despues: .6 }); }); y += 1.5; }

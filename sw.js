@@ -1,7 +1,7 @@
 /* Service worker – permite instalar la app y usarla sin conexión.
    IMPORTANTE: cada vez que cambie archivos en GitHub, suba este número (v1.0.1, v1.0.2…)
    para que los celulares descarguen la versión nueva. */
-var VERSION = "timon-v1.1.0";
+var VERSION = "timon-v1.2.0";
 var BASICOS = [
   "./", "index.html", "estilos.css", "app.js", "config.js", "datos.js", "conocimiento.js", "manifest.json",
   "logo.png", "estudiante.png", "favicon.png", "icono-192.png", "icono-512.png", "icono-maskable-512.png", "apple-touch-icon.png"

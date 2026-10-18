@@ -96,36 +96,58 @@
       if (!j.ok) { c.innerHTML = '<div class="tarjeta"><div class="mensaje mal">' + esc(j.error) + "</div></div>"; return; }
       var filas = j.filas || [], meses = [];
       filas.forEach(function (f) { if (meses.indexOf(f.mes) < 0) meses.push(f.mes); }); meses.sort();
-      c.innerHTML = '<div class="tarjeta"><h2>' + I.grafico + ' Consultas por tema</h2><p class="ayuda">Se cuenta solo el <b>tema general</b> y el <b>rol</b> de cada consulta, de forma anónima (nunca el texto). Úselo para detectar las principales dudas y orientar un plan de trabajo de apropiación del reglamento.</p>' +
-        '<div class="campo" style="max-width:260px"><label for="fMes">Período</label><select id="fMes"><option value="">Todo el registro</option>' + meses.slice().reverse().map(function (m) { return "<option>" + esc(m) + "</option>"; }).join("") + "</select></div>" +
-        '<div id="kpis" class="kpis"></div><div class="graf-caja"><h3>Temas consultados</h3><div style="position:relative;height:340px"><canvas id="gTemas"></canvas></div></div>' +
-        '<div class="rejilla"><div class="graf-caja"><h3>Consultas por rol</h3><div style="position:relative;height:240px"><canvas id="gRoles"></canvas></div></div><div class="graf-caja"><h3>Evolución mensual</h3><div style="position:relative;height:240px"><canvas id="gMeses"></canvas></div></div></div>' +
-        '<div id="tablaTemas"></div><div class="acciones-fila"><button class="boton" id="btnPlan">' + I.brujula + ' Generar plan de trabajo con IA</button><button class="boton sec" id="btnCsv">' + I.archivo + ' Descargar datos (CSV)</button></div><div id="plan"></div></div>';
+      var rolesTodos = []; filas.forEach(function (f) { if (rolesTodos.indexOf(f.rol) < 0) rolesTodos.push(f.rol); });
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.grafico + ' Estadísticas de consultas</h2><p class="ayuda">Se cuenta solo el <b>tema general</b> y el <b>rol</b> de cada consulta, de forma anónima (nunca el texto). Úselo para detectar las principales dudas de cada estamento y orientar un plan de trabajo de apropiación del reglamento.</p>' +
+        '<div class="rejilla" style="max-width:560px"><div class="campo"><label for="fMes">Período</label><select id="fMes"><option value="">Todo el registro</option>' + meses.slice().reverse().map(function (m) { return "<option>" + esc(m) + "</option>"; }).join("") + "</select></div>" +
+        '<div class="campo"><label for="fRol">Rol</label><select id="fRol"><option value="">Todos los roles</option>' + rolesTodos.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + "</select></div></div>" +
+        '<div id="kpis" class="kpis"></div>' +
+        '<div class="graf-caja"><h3>Consultas por rol y su principal duda</h3><div id="tablaRoles"></div></div>' +
+        '<div class="rejilla"><div class="graf-caja"><h3>Consultas por rol</h3><div style="position:relative;height:250px"><canvas id="gRoles"></canvas></div></div><div class="graf-caja"><h3>Evolución mensual</h3><div style="position:relative;height:250px"><canvas id="gMeses"></canvas></div></div></div>' +
+        '<div class="graf-caja"><h3>Temas consultados según rol</h3><div style="position:relative;height:380px"><canvas id="gCruce"></canvas></div></div>' +
+        '<div class="graf-caja"><h3>Tabla de temas por rol</h3><div id="tablaCruce" style="overflow-x:auto"></div></div>' +
+        '<div class="graf-caja"><h3>Temas consultados (total)</h3><div style="position:relative;height:340px"><canvas id="gTemas"></canvas></div><div id="tablaTemas"></div></div>' +
+        '<div class="acciones-fila"><button class="boton" id="btnPlan">' + I.brujula + ' Generar plan de trabajo con IA</button><button class="boton sec" id="btnCsv">' + I.archivo + ' Descargar datos (CSV)</button></div><div id="plan"></div></div>';
+      function corto(t, max) { return t.length > max ? t.slice(0, max - 1) + "…" : t; }
       function dibujar() {
-        var mes = $("#fMes").value, porTema = {}, porRol = {}, porMes = {}, total = 0;
-        filas.forEach(function (f) { porMes[f.mes] = (porMes[f.mes] || 0) + f.n; if (mes && f.mes !== mes) return; porTema[f.tema] = (porTema[f.tema] || 0) + f.n; porRol[f.rol] = (porRol[f.rol] || 0) + f.n; total += f.n; });
+        var mes = $("#fMes").value, rolF = $("#fRol").value, porTema = {}, porRol = {}, porMes = {}, cruce = {}, total = 0;
+        filas.forEach(function (f) {
+          if (rolF && f.rol !== rolF) return;
+          porMes[f.mes] = (porMes[f.mes] || 0) + f.n; if (mes && f.mes !== mes) return;
+          porTema[f.tema] = (porTema[f.tema] || 0) + f.n; porRol[f.rol] = (porRol[f.rol] || 0) + f.n; total += f.n;
+          cruce[f.rol] = cruce[f.rol] || {}; cruce[f.rol][f.tema] = (cruce[f.rol][f.tema] || 0) + f.n;
+        });
         var temas = Object.keys(porTema).sort(function (a, b) { return porTema[b] - porTema[a]; }), roles = Object.keys(porRol).sort(function (a, b) { return porRol[b] - porRol[a]; });
+        function principal(r) { return Object.keys(cruce[r]).sort(function (a, b) { return cruce[r][b] - cruce[r][a]; })[0]; }
         $("#kpis").innerHTML = [["Consultas", total], ["Tema principal", temas[0] || "—"], ["Rol que más consulta", roles[0] || "—"]].map(function (k) { return '<div class="kpi"><b>' + esc(k[1]) + "</b><span>" + esc(k[0]) + "</span></div>"; }).join("");
-        $("#tablaTemas").innerHTML = total ? '<table class="tabla-stats"><tr><th>Tema</th><th>Consultas</th><th>%</th></tr>' + temas.map(function (t) { return "<tr><td>" + esc(t) + "</td><td>" + porTema[t] + "</td><td>" + Math.round(porTema[t] * 100 / total) + "%</td></tr>"; }).join("") + "</table>" : '<div class="mensaje info">Aún no hay consultas registradas. Aparecerán aquí a medida que la comunidad use el chat.</div>';
+        var vacio = '<div class="mensaje info">Aún no hay consultas registradas para este filtro. Aparecerán a medida que la comunidad use el chat (después de actualizar Apps Script y GitHub).</div>';
+        $("#tablaRoles").innerHTML = total ? '<table class="tabla-stats"><tr><th>Rol</th><th>Consultas</th><th>%</th><th>Principal duda</th></tr>' + roles.map(function (r) {
+          var p = principal(r); return "<tr><td><b>" + esc(r) + "</b></td><td>" + porRol[r] + "</td><td>" + Math.round(porRol[r] * 100 / total) + "%</td><td>" + esc(p) + " (" + cruce[r][p] + ")</td></tr>"; }).join("") + "</table>" : vacio;
+        $("#tablaCruce").innerHTML = total ? '<table class="tabla-stats"><tr><th>Tema</th>' + roles.map(function (r) { return "<th>" + esc(r) + "</th>"; }).join("") + "<th>Total</th></tr>" + temas.map(function (t) {
+          return "<tr><td>" + esc(t) + "</td>" + roles.map(function (r) { var v = cruce[r][t] || 0, a = v ? Math.min(.75, .12 + v / porTema[temas[0]] * .6) : 0; return '<td style="text-align:center;background:rgba(30,79,163,' + a.toFixed(2) + ');' + (a > .45 ? "color:#fff;font-weight:800" : "") + '">' + (v || "–") + "</td>"; }).join("") + "<td><b>" + porTema[t] + "</b></td></tr>"; }).join("") + "</table>" : "";
+        $("#tablaTemas").innerHTML = total ? '<table class="tabla-stats"><tr><th>Tema</th><th>Consultas</th><th>%</th></tr>' + temas.map(function (t) { return "<tr><td>" + esc(t) + "</td><td>" + porTema[t] + "</td><td>" + Math.round(porTema[t] * 100 / total) + "%</td></tr>"; }).join("") + "</table>" : vacio;
         cargar(CHART).then(function () {
           graficos.forEach(function (g) { g.destroy(); }); graficos = [];
           var oscuro = document.documentElement.getAttribute("data-theme") === "dark" || (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
           Chart.defaults.color = oscuro ? "#EAF0FB" : "#13213D"; Chart.defaults.font.family = "Nunito";
+          var maxEt = innerWidth < 640 ? 16 : 34;
           graficos.push(new Chart($("#gTemas"), { type: "bar", data: { labels: temas, datasets: [{ label: "Consultas", data: temas.map(function (t) { return porTema[t]; }), backgroundColor: temas.map(function (t, i) { return PALETA[i % PALETA.length]; }), borderRadius: 8 }] },
             options: { indexAxis: "y", maintainAspectRatio: false, animation: { duration: 1200 }, plugins: { legend: { display: false } },
-              scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { callback: function (v) { var t = this.getLabelForValue(v), max = innerWidth < 640 ? 16 : 34; return t.length > max ? t.slice(0, max - 1) + "…" : t; } } } } } }));
-          graficos.push(new Chart($("#gRoles"), { type: "doughnut", data: { labels: roles, datasets: [{ data: roles.map(function (r) { return porRol[r]; }), backgroundColor: PALETA }] }, options: { maintainAspectRatio: false, animation: { duration: 1200 } } }));
-          graficos.push(new Chart($("#gMeses"), { type: "line", data: { labels: meses, datasets: [{ label: "Consultas", data: meses.map(function (m) { return porMes[m]; }), borderColor: "#1E4FA3", backgroundColor: "rgba(30,79,163,.15)", fill: true, tension: .35 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
+              scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { callback: function (v) { return corto(this.getLabelForValue(v), maxEt); } } } } } }));
+          graficos.push(new Chart($("#gCruce"), { type: "bar", data: { labels: temas, datasets: roles.map(function (r, i) { return { label: r, data: temas.map(function (t) { return cruce[r][t] || 0; }), backgroundColor: PALETA[i % PALETA.length], borderRadius: 4 }; }) },
+            options: { indexAxis: "y", maintainAspectRatio: false, animation: { duration: 1200 }, plugins: { legend: { position: "bottom" } },
+              scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true, ticks: { callback: function (v) { return corto(this.getLabelForValue(v), maxEt); } } } } } }));
+          graficos.push(new Chart($("#gRoles"), { type: "doughnut", data: { labels: roles, datasets: [{ data: roles.map(function (r) { return porRol[r]; }), backgroundColor: PALETA }] }, options: { maintainAspectRatio: false, animation: { duration: 1200 }, plugins: { legend: { position: "bottom" } } } }));
+          graficos.push(new Chart($("#gMeses"), { type: "line", data: { labels: meses, datasets: [{ label: "Consultas", data: meses.map(function (m) { return porMes[m] || 0; }), borderColor: "#1E4FA3", backgroundColor: "rgba(30,79,163,.15)", fill: true, tension: .35 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
         });
       }
-      $("#fMes").onchange = dibujar; dibujar();
+      $("#fMes").onchange = dibujar; $("#fRol").onchange = dibujar; dibujar();
       $("#btnCsv").onclick = function () {
         var csv = "mes;tema;rol;consultas\n" + filas.map(function (f) { return [f.mes, f.tema, f.rol, f.n].join(";"); }).join("\n");
-        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "consultas_por_tema.csv"; a.click();
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "consultas_por_tema_y_rol.csv"; a.click();
       };
       $("#btnPlan").onclick = function () {
-        var b = this; b.disabled = true; $("#plan").innerHTML = '<div class="mensaje info">Preparando la propuesta de plan de trabajo…</div>';
-        api({ accion: "plan_trabajo", mes: $("#fMes").value }).then(function (r) {
+        var b = this; b.disabled = true; $("#plan").innerHTML = '<div class="mensaje info">Preparando la propuesta de plan de trabajo por rol…</div>';
+        api({ accion: "plan_trabajo", mes: $("#fMes").value, rol: $("#fRol").value }).then(function (r) {
           b.disabled = false;
           $("#plan").innerHTML = r.ok ? '<div class="plan-caja">' + mdSimple(r.texto) + '<p class="ayuda" style="font-size:.8rem">Propuesta generada con IA a partir de ' + r.total + " consultas. Revísela y ajústela con el equipo directivo.</p></div>" : '<div class="mensaje mal">' + esc(r.error) + "</div>";
         }).catch(function () { b.disabled = false; });
