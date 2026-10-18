@@ -417,7 +417,7 @@
     var lineas = String(texto || "").replace(/\r/g, "").split("\n"), bl = [], i = 0, parrafo = [];
     function cerrarP() { if (parrafo.length) { bl.push({ t: "p", x: parrafo.join("\n") }); parrafo = []; } }
     while (i < lineas.length) {
-      var l = lineas[i];
+      var l = lineas[i].replace(/^\s*\*\*\s*(#{1,6}\s+[^*]+?)\s*\*\*\s*$/, "$1");   // "**### Título**" → "### Título"
       var fence = l.match(/^\s*```\s*([\wáéíóú-]*)\s*$/i);
       if (fence) {
         cerrarP(); var tipo = (fence[1] || "").toLowerCase(), cuerpo = []; i++;
@@ -688,16 +688,16 @@
   }
   function ultimaConsulta() { for (var i = estado.respuestas.length - 1; i >= 0; i--) if (estado.respuestas[i].consulta) return estado.respuestas[i].consulta; return ""; }
   function pedirIA(payload, intento) {
-    var ctrl = new AbortController(), t = setTimeout(function () { ctrl.abort(); }, 95000);
+    var ctrl = new AbortController(), t = setTimeout(function () { ctrl.abort(); }, 40000);
     return fetch(URL_SERVIDOR, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload), signal: ctrl.signal, redirect: "follow" })
       .then(function (r) { clearTimeout(t); return r.json(); })
       .then(function (j) {
-        if (j && j.ocupado && intento < 1) { return new Promise(function (ok) { setTimeout(ok, 4000); }).then(function () { return pedirIA(payload, intento + 1); }); }
+        // Si el servidor ya probó ambos modelos y siguen saturados, no se espera: se muestra el reglamento
         return j;
       })
       .catch(function (e) {
         clearTimeout(t);
-        if (intento < 1 && navigator.onLine !== false) return new Promise(function (ok) { setTimeout(ok, 2500); }).then(function () { return pedirIA(payload, intento + 1); });
+        if (intento < 1 && navigator.onLine !== false && e && e.name !== "AbortError") return new Promise(function (ok) { setTimeout(ok, 800); }).then(function () { return pedirIA(payload, intento + 1); });
         throw e;
       });
   }
