@@ -45,7 +45,7 @@ window.DATOS_BASE = {
   ],
   /* Normativa con enlaces verificados en la Biblioteca del Congreso Nacional (BCN) */
   normativa: [
-    { titulo: "Ley 20.370 – Ley General de Educación", url: "https://www.bcn.cl/leychile/navegar?idLey=20370", categoria: "Leyes generales", claves: "lge ley general educacion derechos deberes reglamento interno" },
+    { titulo: "Ley 20.370 – Ley General de Educación", url: "https://www.bcn.cl/leychile/navegar?idLey=20370", categoria: "Leyes generales", claves: "lge ley general educacion derechos deberes reglamento interno celular celulares dispositivos moviles embarazo maternidad matricula" },
     { titulo: "Ley 21.040 – Sistema de Educación Pública (SLEP)", url: "https://www.bcn.cl/leychile/navegar?idLey=21040", categoria: "Leyes generales", claves: "slep servicio local educacion publica nep" },
     { titulo: "Ley 20.529 – Sistema de Aseguramiento de la Calidad", url: "https://www.bcn.cl/leychile/navegar?idLey=20529", categoria: "Leyes generales", claves: "calidad superintendencia agencia sac" },
     { titulo: "Ley 20.536 – Sobre Violencia Escolar", url: "https://www.bcn.cl/leychile/navegar?idLey=20536", categoria: "Convivencia escolar", claves: "violencia escolar acoso bullying maltrato convivencia encargado" },
@@ -62,6 +62,13 @@ window.DATOS_BASE = {
     { titulo: "Ley 20.903 – Sistema de Desarrollo Profesional Docente", url: "https://www.bcn.cl/leychile/navegar?idLey=20903", categoria: "Funcionarios", claves: "carrera docente desarrollo profesional mentoria" },
     { titulo: "Ley 21.109 – Estatuto de Asistentes de la Educación Pública", url: "https://www.bcn.cl/leychile/navegar?idLey=21109", categoria: "Funcionarios", claves: "asistentes educacion estatuto funciones" },
     { titulo: "Ley 21.643 – Ley Karin (acoso laboral y sexual)", url: "https://www.bcn.cl/leychile/navegar?idLey=21643", categoria: "Funcionarios", claves: "karin acoso laboral sexual violencia trabajo funcionarios" },
+    { titulo: "Código Procesal Penal – Obligación de denunciar (arts. 175 a 177)", url: "https://www.bcn.cl/leychile/navegar?idLey=19696", categoria: "Responsabilidad penal y civil", claves: "denuncia denunciar obligacion fiscalia carabineros pdi 24 horas delito" },
+    { titulo: "Código Penal", url: "https://www.bcn.cl/leychile/navegar?idNorma=1984", categoria: "Responsabilidad penal y civil", claves: "delito lesiones amenazas abuso sexual robo hurto danos imagenes intimas acoso" },
+    { titulo: "Ley 20.084 – Responsabilidad Penal Adolescente", url: "https://www.bcn.cl/leychile/navegar?idLey=20084", categoria: "Responsabilidad penal y civil", claves: "responsabilidad penal adolescente 14 18 anos menor edad" },
+    { titulo: "Código Civil – Responsabilidad por hechos de otros (arts. 2319 a 2321)", url: "https://www.bcn.cl/leychile/navegar?idNorma=172986", categoria: "Responsabilidad penal y civil", claves: "responsabilidad civil dano indemnizacion padres colegio cuidado" },
+    { titulo: "Ley 19.968 – Tribunales de Familia", url: "https://www.bcn.cl/leychile/navegar?idLey=19968", categoria: "Responsabilidad penal y civil", claves: "tribunal familia proteccion medida menor 14 vulneracion" },
+    { titulo: "Ley 20.000 – Tráfico de Estupefacientes (drogas)", url: "https://www.bcn.cl/leychile/navegar?idLey=20000", categoria: "Responsabilidad penal y civil", claves: "droga drogas marihuana trafico microtrafico consumo estupefacientes" },
+    { titulo: "Ley 17.798 – Control de Armas", url: "https://www.bcn.cl/leychile/navegar?idLey=17798", categoria: "Responsabilidad penal y civil", claves: "arma armas cuchillo pistola porte fuego" },
     { titulo: "Ley 21.719 – Protección de Datos Personales", url: "https://www.bcn.cl/leychile/navegar?idLey=21719", categoria: "Datos personales", claves: "datos personales privacidad proteccion confidencialidad" }
   ],
   /* Sitios oficiales (verificados) para "Fuentes externas sugeridas" */

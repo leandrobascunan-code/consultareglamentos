@@ -90,6 +90,109 @@
     });
     cerrar(); return html;
   }
+  // ---------- PDF formal del plan de trabajo ----------
+  var JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  function latin(s) {
+    return String(s || "").replace(/[→⇒]/g, "->").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[●▪■◦]/g, "•").replace(/<br\s*\/?>/gi, " ")
+      .replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`/g, "").replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF€…•–—]/g, "");
+  }
+  function bloquesMd(t) {
+    var out = [], tabla = [];
+    String(t || "").split("\n").forEach(function (l) {
+      var m;
+      if (/^\s*\|.*\|\s*$/.test(l)) { var cs = l.trim().replace(/^\||\|$/g, "").split("|").map(function (x) { return x.trim(); }); if (!cs.every(function (x) { return /^:?-{2,}:?$/.test(x); })) tabla.push(cs); return; }
+      if (tabla.length) { out.push({ t: "tabla", filas: tabla }); tabla = []; }
+      if ((m = l.match(/^\s*#{1,4}\s+(.*)/))) out.push({ t: "h", x: m[1] });
+      else if ((m = l.match(/^\s*([-*•]|\d+[.)])\s+(.*)/))) out.push({ t: "li", x: m[2], n: /\d/.test(m[1]) ? m[1] : "•" });
+      else if (l.trim()) out.push({ t: "p", x: l });
+    });
+    if (tabla.length) out.push({ t: "tabla", filas: tabla });
+    return out;
+  }
+  function logoData() {
+    return fetch("logo.png").then(function (r) { return r.blob(); }).then(function (b) { return new Promise(function (ok) { var fr = new FileReader(); fr.onload = function () { ok(fr.result); }; fr.readAsDataURL(b); }); }).catch(function () { return null; });
+  }
+  function planPDF(texto, res) {
+    toast("Preparando PDF…");
+    Promise.all([cargar(JSPDF), logoData()]).then(function (v) {
+      var logo = v[1], doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4" }), M = 18, W = 174, y = 0;
+      var info = {}; Object.keys(BASE.info).forEach(function (k) { info[k] = (cat && cat.info && cat.info[k]) || BASE.info[k]; });
+      var AZUL = [14, 42, 104], ORO = [245, 196, 0], TXT = [25, 33, 55];
+      function membrete() {
+        if (logo) try { doc.addImage(logo, "PNG", M, 9, 13.5, 17.4); } catch (e) { }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor.apply(doc, AZUL); doc.text(latin(info.nombre), M + 17, 15);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(80, 90, 110);
+        doc.text(latin(info.dependencia + " · RBD " + info.rbd), M + 17, 19.6); doc.text(latin(info.direccion), M + 17, 23.4);
+        doc.setDrawColor.apply(doc, ORO); doc.setLineWidth(1); doc.line(M, 28, 210 - M, 28);
+        doc.setDrawColor.apply(doc, AZUL); doc.setLineWidth(.3); doc.line(M, 29.4, 210 - M, 29.4); y = 37;
+      }
+      function espacio(h) { if (y + h > 277) { doc.addPage(); membrete(); } }
+      function escribir(t, o) {
+        o = o || {}; doc.setFont("helvetica", o.b ? "bold" : (o.i ? "italic" : "normal")); doc.setFontSize(o.tam || 10.5); doc.setTextColor.apply(doc, o.color || TXT);
+        var sang = o.sang || 0, ls = doc.splitTextToSize(latin(t), W - sang), alto = (o.tam || 10.5) * .43;
+        ls.forEach(function (l, k) { espacio(alto + 1); if (k === 0 && o.vin) doc.text(o.vin, M + sang - 5, y); doc.text(l, M + sang, y); y += alto + 1.1; });
+        y += o.desp == null ? 1.8 : o.desp;
+      }
+      function tabla(filas, anchos) {
+        var nc = filas[0].length; anchos = anchos || filas[0].map(function () { return W / nc; }); doc.setFontSize(9);
+        filas.forEach(function (f, fi) {
+          var celdas = f.map(function (cx, ci) { return doc.splitTextToSize(latin(cx), anchos[ci] - 3); }), h = Math.max.apply(null, celdas.map(function (cx) { return cx.length; })) * 3.9 + 3, x = M;
+          espacio(h + 1);
+          celdas.forEach(function (cx, ci) {
+            if (fi === 0) { doc.setFillColor.apply(doc, AZUL); doc.rect(x, y - 3.5, anchos[ci], h, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); }
+            else { if (fi % 2 === 0) { doc.setFillColor(242, 246, 252); doc.rect(x, y - 3.5, anchos[ci], h, "F"); } doc.setDrawColor(214, 224, 240); doc.rect(x, y - 3.5, anchos[ci], h); doc.setTextColor.apply(doc, TXT); doc.setFont("helvetica", "normal"); }
+            cx.forEach(function (l, k) { doc.text(l, x + 1.5, y + k * 3.9); }); x += anchos[ci];
+          });
+          y += h;
+        });
+        y += 5;
+      }
+      membrete();
+      doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor.apply(doc, AZUL);
+      doc.splitTextToSize("Plan de trabajo para la apropiación del Reglamento Interno y del Reglamento de Evaluación", W).forEach(function (l) { doc.text(latin(l), M, y); y += 6.5; });
+      y += 1;
+      var filasFicha = [["Fecha", new Date().toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })], ["Período analizado", res.mes || "Todo el registro"],
+        ["Rol analizado", res.rol || "Todos los roles"], ["Consultas analizadas", String(res.total || 0)], ["Fuente", "Estadísticas anónimas del asistente Timón (solo tema general y rol)"]];
+      doc.setFontSize(10); var altoF = 6 + filasFicha.length * 5.4;
+      doc.setFillColor(238, 243, 251); doc.setDrawColor(214, 224, 240); doc.roundedRect(M, y - 4, W, altoF, 2.5, 2.5, "FD");
+      filasFicha.forEach(function (f) { doc.setFont("helvetica", "bold"); doc.setTextColor.apply(doc, AZUL); doc.text(f[0] + ":", M + 4, y + 1); doc.setFont("helvetica", "normal"); doc.setTextColor.apply(doc, TXT); doc.text(latin(f[1]), M + 48, y + 1); y += 5.4; });
+      y += 8;
+      escribir("1. Resumen de las consultas", { b: true, tam: 12.5, color: AZUL, desp: 2 });
+      if (res.temas && res.temas.length) tabla([["Tema", "Consultas", "%"]].concat(res.temas.map(function (t) { return [t[0], String(t[1]), Math.round(t[1] * 100 / res.total) + "%"]; })), [124, 25, 25]);
+      if (res.roles && res.roles.length) tabla([["Rol", "Consultas", "Principal duda"]].concat(res.roles.map(function (r) { return [r[0], String(r[1]), r[2]]; })), [62, 25, 87]);
+      escribir("2. Propuesta de plan de trabajo", { b: true, tam: 12.5, color: AZUL, desp: 2 });
+      bloquesMd(texto).forEach(function (b) {
+        if (b.t === "h") { y += 1.5; espacio(10); escribir(b.x, { b: true, tam: 11.5, color: AZUL, desp: 1 }); }
+        else if (b.t === "p") escribir(b.x);
+        else if (b.t === "li") escribir(b.x, { sang: 6, vin: b.n, desp: .6 });
+        else if (b.t === "tabla") tabla(b.filas);
+      });
+      // Validación
+      y += 4; espacio(42);
+      escribir("3. Validación", { b: true, tam: 12.5, color: AZUL, desp: 6 });
+      doc.setFontSize(9.5); doc.setTextColor.apply(doc, TXT); doc.setFont("helvetica", "normal");
+      [["Elaborado por", M], ["Revisado por (UTP / Convivencia)", M + 60], ["Aprobado por (Dirección)", M + 120]].forEach(function (f) {
+        doc.setDrawColor(120, 130, 150); doc.line(f[1], y + 8, f[1] + 52, y + 8); doc.text(latin(f[0]), f[1], y + 13);
+      });
+      y += 22;
+      // Nota IA
+      espacio(22);
+      var nota = "Nota: la propuesta fue generada con apoyo de inteligencia artificial a partir de estadísticas anónimas de consultas (solo tema general y rol, sin datos personales, Ley N° 21.719). Debe ser revisada, ajustada y validada por el equipo directivo antes de su aplicación.";
+      doc.setFontSize(8.8); var ln = doc.splitTextToSize(latin(nota), W - 8);
+      doc.setFillColor(255, 248, 214); doc.setDrawColor(217, 164, 0); doc.roundedRect(M, y - 4, W, ln.length * 3.9 + 5, 2, 2, "FD");
+      doc.setFont("helvetica", "italic"); doc.setTextColor(90, 70, 0); ln.forEach(function (l, k) { doc.text(l, M + 4, y + .5 + k * 3.9); });
+      var n = doc.getNumberOfPages();
+      for (var i = 1; i <= n; i++) {
+        doc.setPage(i); doc.setDrawColor(214, 224, 240); doc.setLineWidth(.3); doc.line(M, 284, 210 - M, 284);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(110, 120, 140);
+        doc.text(latin("Plan de trabajo · " + info.nombre + " · Generado con el asistente Timón"), M, 289);
+        doc.text("Página " + i + " de " + n, 210 - M, 289, { align: "right" });
+      }
+      doc.save("Plan_de_trabajo_Reglamento_" + new Date().toISOString().slice(0, 10) + ".pdf");
+      toast("PDF descargado");
+    }).catch(function () { toast("No se pudo crear el PDF. Revise su conexión.", 4000); });
+  }
+
   function pStats(c) {
     c.innerHTML = '<div class="tarjeta"><p>Cargando estadísticas…</p></div>';
     api({ accion: "estadisticas" }).then(function (j) {
@@ -100,6 +203,9 @@
       c.innerHTML = '<div class="tarjeta"><h2>' + I.grafico + ' Estadísticas de consultas</h2><p class="ayuda">Se cuenta solo el <b>tema general</b> y el <b>rol</b> de cada consulta, de forma anónima (nunca el texto). Úselo para detectar las principales dudas de cada estamento y orientar un plan de trabajo de apropiación del reglamento.</p>' +
         '<div class="rejilla" style="max-width:560px"><div class="campo"><label for="fMes">Período</label><select id="fMes"><option value="">Todo el registro</option>' + meses.slice().reverse().map(function (m) { return "<option>" + esc(m) + "</option>"; }).join("") + "</select></div>" +
         '<div class="campo"><label for="fRol">Rol</label><select id="fRol"><option value="">Todos los roles</option>' + rolesTodos.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + "</select></div></div>" +
+        '<div class="acciones-fila" style="margin:0 0 12px;align-items:center"><button class="boton sec" id="btnActualizar" type="button">↻ Actualizar conteo</button>' +
+        '<button class="boton peligro" id="btnReiniciar" type="button">' + I.basura + ' Reiniciar conteo</button><span class="contador" id="contador">Total registrado: <b>' +
+        filas.reduce(function (a, f) { return a + f.n; }, 0) + "</b> consultas · actualizado a las " + new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + "</span></div>" +
         '<div id="kpis" class="kpis"></div>' +
         '<div class="graf-caja"><h3>Consultas por rol y su principal duda</h3><div id="tablaRoles"></div></div>' +
         '<div class="rejilla"><div class="graf-caja"><h3>Consultas por rol</h3><div style="position:relative;height:250px"><canvas id="gRoles"></canvas></div></div><div class="graf-caja"><h3>Evolución mensual</h3><div style="position:relative;height:250px"><canvas id="gMeses"></canvas></div></div></div>' +
@@ -108,6 +214,15 @@
         '<div class="graf-caja"><h3>Temas consultados (total)</h3><div style="position:relative;height:340px"><canvas id="gTemas"></canvas></div><div id="tablaTemas"></div></div>' +
         '<div class="acciones-fila"><button class="boton" id="btnPlan">' + I.brujula + ' Generar plan de trabajo con IA</button><button class="boton sec" id="btnCsv">' + I.archivo + ' Descargar datos (CSV)</button></div><div id="plan"></div></div>';
       function corto(t, max) { return t.length > max ? t.slice(0, max - 1) + "…" : t; }
+      var resumen = null;
+      $("#btnActualizar").onclick = function () { pStats(c); };
+      $("#btnReiniciar").onclick = function () {
+        if (!confirm("¿Reiniciar el conteo de consultas a cero?\n\nSe guardará una copia de respaldo en la hoja de datos de Drive (pestaña \"Respaldo\").")) return;
+        api({ accion: "reiniciar_estadisticas" }).then(function (r) {
+          if (r.ok) { toast(r.respaldo ? "Conteo reiniciado. Respaldo: " + r.respaldo : "Conteo reiniciado", 4000); pStats(c); }
+          else msg(c, "mal", r.error || "No se pudo reiniciar");
+        }).catch(function () { });
+      };
       function dibujar() {
         var mes = $("#fMes").value, rolF = $("#fRol").value, porTema = {}, porRol = {}, porMes = {}, cruce = {}, total = 0;
         filas.forEach(function (f) {
@@ -118,6 +233,7 @@
         });
         var temas = Object.keys(porTema).sort(function (a, b) { return porTema[b] - porTema[a]; }), roles = Object.keys(porRol).sort(function (a, b) { return porRol[b] - porRol[a]; });
         function principal(r) { return Object.keys(cruce[r]).sort(function (a, b) { return cruce[r][b] - cruce[r][a]; })[0]; }
+        resumen = { mes: mes, rol: rolF, total: total, temas: temas.map(function (t) { return [t, porTema[t]]; }), roles: roles.map(function (r) { return [r, porRol[r], principal(r)]; }) };
         $("#kpis").innerHTML = [["Consultas", total], ["Tema principal", temas[0] || "—"], ["Rol que más consulta", roles[0] || "—"]].map(function (k) { return '<div class="kpi"><b>' + esc(k[1]) + "</b><span>" + esc(k[0]) + "</span></div>"; }).join("");
         var vacio = '<div class="mensaje info">Aún no hay consultas registradas para este filtro. Aparecerán a medida que la comunidad use el chat (después de actualizar Apps Script y GitHub).</div>';
         $("#tablaRoles").innerHTML = total ? '<table class="tabla-stats"><tr><th>Rol</th><th>Consultas</th><th>%</th><th>Principal duda</th></tr>' + roles.map(function (r) {
@@ -147,9 +263,13 @@
       };
       $("#btnPlan").onclick = function () {
         var b = this; b.disabled = true; $("#plan").innerHTML = '<div class="mensaje info">Preparando la propuesta de plan de trabajo por rol…</div>';
+        var foto = JSON.parse(JSON.stringify(resumen || {}));
         api({ accion: "plan_trabajo", mes: $("#fMes").value, rol: $("#fRol").value }).then(function (r) {
           b.disabled = false;
-          $("#plan").innerHTML = r.ok ? '<div class="plan-caja">' + mdSimple(r.texto) + '<p class="ayuda" style="font-size:.8rem">Propuesta generada con IA a partir de ' + r.total + " consultas. Revísela y ajústela con el equipo directivo.</p></div>" : '<div class="mensaje mal">' + esc(r.error) + "</div>";
+          if (!r.ok) { $("#plan").innerHTML = '<div class="mensaje mal">' + esc(r.error) + "</div>"; return; }
+          $("#plan").innerHTML = '<div class="plan-caja"><div class="acciones-fila" style="margin:0 0 10px"><button class="boton amarillo" id="btnPlanPdf" type="button">' + I.archivo + ' Descargar plan en PDF</button></div>' +
+            mdSimple(r.texto) + '<p class="ayuda" style="font-size:.8rem">Propuesta generada con IA a partir de ' + r.total + " consultas. Revísela y ajústela con el equipo directivo.</p></div>";
+          $("#btnPlanPdf").onclick = function () { planPDF(r.texto, foto); };
         }).catch(function () { b.disabled = false; });
       };
     }).catch(function () { });

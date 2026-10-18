@@ -170,8 +170,8 @@
   var EVAL = /evaluaci|calific|nota|prueba|promoci|repit|examen|reevalu|eximi|adecuaci|asistencia/i;
   // Temas generales (solo se cuenta el tema, de forma anónima, para las estadísticas del panel)
   var TEMAS = [
-    ["Protección de derechos y salud mental", /vulnera|abuso|connotaci[oó]n sexual|agresi[oó]n sexual|suicid|autoles|droga|alcohol|embaraz|maternidad|paternidad|medicament/i],
-    ["Acoso, violencia y maltrato", /acoso|bullying|ciberacoso|ciberbullying|violen|agresi|pelea|golpe|maltrato|discrimin|amenaz/i],
+    ["Protección de derechos y salud mental", /vulnera|abuso|connotaci[oó]n sexual|agresi[oó]n sexual|suicid|autoles|droga|marihuana|alcohol|embaraz|maternidad|paternidad|medicament/i],
+    ["Acoso, violencia y maltrato", /\bpeg[oóaué]|pegar|patad|pu[nñ]et|\bcombos?\b|herid|acoso|bullying|ciberacoso|ciberbullying|violen|agresi|pelea|golpe|maltrato|discrimin|amenaz/i],
     ["Faltas, medidas y debido proceso", /falta|sanci[oó]n|sanciones|medida|suspen|expuls|cancelaci[oó]n|condicional|debido proceso|anotaci|disciplin|aula segura/i],
     ["Inclusión, NEE, PIE y TEA", /\bpie\b|\bnee\b|\btea\b|autis|adecuaci|\bpaci\b|\bpai\b|diversific|diferenciad|desregula|inclusi/i],
     ["Promoción, asistencia y repitencia", /promoci|repit|asistencia|inasistencia|cierre anticipado|85 ?%/i],
@@ -181,7 +181,14 @@
     ["Normas generales (uniforme, horarios, celular)", /uniforme|presentaci[oó]n personal|celular|horario|atraso|puntualidad|recreo|comedor|laboratorio/i],
     ["PEI, misión y sellos", /\bpei\b|misi[oó]n|visi[oó]n|sello|valores/i]
   ];
-  function clasificarTema(t) { for (var i = 0; i < TEMAS.length; i++) if (TEMAS[i][1].test(t)) return TEMAS[i][0]; return "Otros temas"; }
+  function esAusenciaEvaluacion(t) { return INTENCIONES[0][0].test(t); }   // "faltó a una prueba" no es una falta disciplinaria
+  function clasificarTema(t) {
+    if (esAusenciaEvaluacion(t) && !/sanci|anotaci|disciplin|copi|plagi/i.test(t)) return "Evaluación y calificaciones";
+    for (var i = 0; i < TEMAS.length; i++) if (TEMAS[i][1].test(t)) return TEMAS[i][0]; return "Otros temas"; }
+  // Hechos que podrían ser delito: se agrega la revisión penal (denuncia, Ley 20.084, Código Penal y Civil)
+  var RE_DELITO = /\bpeg[oóaué]|pegar|patad|pu[nñ]et|\bcombos?\b|herid|sangr|quebr|fractur|golpe|golpi|agresi[oó]n f[ií]sica|agredi|lesi[oó]n|lesiones|pelea|amenaz|abus|acoso sexual|connotaci[oó]n sexual|violaci[oó]n|tocaci|grooming|im[aá]genes [ií]ntimas|fotos [ií]ntimas|video [ií]ntimo|nudes|sexting|droga|marihuana|tr[aá]fico|microtr[aá]fico|\barmas?\b|cuchillo|navaja|pistola|robo|rob[oó]|hurt|da[nñ]os? a|destroz|vandal|incendi|extorsi|maltrato (f[ií]sico|de un adulto|por parte)|funcionario (agred|golpe|maltrat)|ciberacoso|suplantaci[oó]n de identidad|delito/i;
+  // Consultas donde conviene recordar derechos de los estudiantes (LGE arts. 10, 10 bis y 11)
+  var RE_DERECHOS = /derecho|celular|tel[eé]fono|dispositivo|embaraz|maternidad|paternidad|matr[ií]cula|repit|discrimin|medicament|tdah|identidad de g[eé]nero|nombre social|religi|opini[oó]n|inclusi|\btea\b|autis|\bnee\b|\bpie\b|expuls|cancelaci|suspen|condicional|uniforme|corte de pelo|cabello|retir/i;
   var RE_DISCIPLINA = /falta|sanci[oó]n|sanciones|medida disciplin|suspen|expuls|cancelaci[oó]n de matr|condicionalidad|debido proceso|aula segura|anotaci/i;
   function buscar(consulta, k) {
     if (!indice) construirIndice();
@@ -218,7 +225,7 @@
   }
   function normativaPara(consulta, n) {
     var q = terminos(consulta, true), lista = BASE.normativa.concat([]);
-    return lista.map(function (x) { var t = terminos(x.claves + " " + x.titulo), s = 0; q.forEach(function (w) { if (t.indexOf(w) >= 0) s++; }); return { x: x, s: s }; })
+    return lista.map(function (x) { var t = terminos(x.claves), s = 0; q.forEach(function (w) { if (t.indexOf(w) >= 0) s++; }); return { x: x, s: s }; })
       .filter(function (o) { return o.s > 0; }).sort(function (a, b) { return b.s - a.s; }).slice(0, n || 4).map(function (o) { return o.x; });
   }
   function fuentesPara(consulta, n) {
@@ -340,6 +347,7 @@
   function mascotaHTML(clase) {
     var d = "animation-delay:" + (Math.random() * 3).toFixed(2) + "s", d2 = "animation-delay:-" + (Math.random() * 2).toFixed(2) + "s";
     return '<div class="mascota ' + (clase || "") + '" style="' + d2 + '"><div class="encuadre"><img src="estudiante.png" alt="">' +
+      '<img class="brazo izq" src="brazo-izq.png" alt=""><img class="brazo der" src="brazo-der.png" alt="">' +
       '<span class="boca"></span><span class="parpado izq" style="' + d + '"></span><span class="parpado der" style="' + d + '"></span></div></div>';
   }
   function bajar() { setTimeout(function () { chat.scrollTo({ top: chat.scrollHeight, behavior: "auto" }); }, 30); }
@@ -466,6 +474,7 @@
     return x.replace(/(^|\n)\s*[-*]\s+/g, "$1• ").replace(/\n/g, "<br>");
   }
   var ICONOS_TITULO = [
+    [/delito|denuncia/i, "alerta", "#8E1B1B"],
     [/ajusta a derecho|a derecho/i, "balanza", "#C0392B"],
     [/en breve|resumen/i, "bombilla", "#D9A400"],
     [/profundizar/i, "timon", "#0E2A68"],
@@ -620,13 +629,27 @@
     if (!opts.sinEco) msgYo(texto);
     if (estado.pasoPerfil !== "listo") estado.pasoPerfil = "listo"; // nunca obligamos a marcar el perfil
     var consultaBusqueda = opts.esRespuesta ? ultimaConsulta() + " " + texto : texto;
-    var frags = buscar(consultaBusqueda, 5);
-    var tema = clasificarTema(consultaBusqueda), disciplinario = tema === "Faltas, medidas y debido proceso" || RE_DISCIPLINA.test(consultaBusqueda);
+    var frags = buscar(consultaBusqueda, 4);
+    var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
+    var disciplinario = delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
-    if (disciplinario) ["20370", "20536", "21128", "21430"].forEach(function (n) {
-      var x = BASE.normativa.filter(function (k) { return k.url.indexOf("idLey=" + n) > 0; })[0];
+    function agregarNorma(id) {
+      var x = BASE.normativa.filter(function (k) { return k.url.slice(-(id.length + 1)) === "=" + id || k.url.indexOf("=" + id + "&") > 0; })[0];
       if (x && normativa.indexOf(x) < 0) normativa.push(x);
-    });
+    }
+    var derechos = RE_DERECHOS.test(consultaBusqueda);
+    if (derechos) agregarNorma("20370");
+    if (disciplinario) ["20370", "20536", "21128", "21430"].forEach(agregarNorma);
+    if (delito) {
+      var previas = normativa.filter(function (n) { return n.categoria !== "Responsabilidad penal y civil" && n.categoria !== "Inclusión y diversidad" && n.categoria !== "Evaluación y currículum"; });
+      normativa = [];
+      ["19696", "1984", "20084", "172986", "19968"].forEach(agregarNorma);
+      if (/droga|marihuana|tr[aá]fico/i.test(consultaBusqueda)) agregarNorma("20000");
+      if (/\barmas?\b|cuchillo|navaja|pistola/i.test(consultaBusqueda)) agregarNorma("17798");
+      previas.forEach(function (n) { if (normativa.indexOf(n) < 0) normativa.push(n); });
+      if (/\btea\b|autis/i.test(consultaBusqueda)) agregarNorma("21545");
+    }
+    normativa = normativa.slice(0, 12);
     // Mensaje de espera: Timón (cuerpo completo) "habla" mientras se prepara la respuesta
     var pensando = el("div", "msg ia pensando");
     pensando.innerHTML = '<div class="avatar grande">' + mascotaHTML("hablando") + '</div><div class="burbuja"><div class="escribiendo"><i></i><i></i><i></i><span>Revisando el Reglamento Interno…</span></div></div>';
@@ -637,10 +660,10 @@
 
     var cat = catalogoEfectivo();
     var payload = {
-      accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario,
-      historial: estado.mensajes.slice(-6).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
+      accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
+      historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 900) }; }),
       perfil: estado.perfil,
-      fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; }),
+      fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1150) }; }),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
       info: cat.info, fecha: new Date().toISOString().slice(0, 10)
@@ -652,6 +675,8 @@
       mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
         servidor: (resp.fuentesServidor || []).filter(function (s) { return s && s.titulo && new RegExp("\\[S\\d\\]|" + String(s.titulo).slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(resp.texto); }) });
     };
+    // Estadística anónima (tema y rol) en paralelo: no retrasa la respuesta
+    if (URL_SERVIDOR) fetch(URL_SERVIDOR, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ accion: "contar", tema: tema, rol: estado.perfil.rol }) }).catch(function () { });
     if (!URL_SERVIDOR) { setTimeout(function () { fin({ texto: respuestaLocal(consultaBusqueda, frags, normativa, "sin-servidor") }, true); }, 500); return; }
     pedirIA(payload, 0).then(function (r) {
       if (r && r.ok && r.texto) { marcarEstado("ok"); fin(r, false); }
@@ -757,7 +782,7 @@
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { hablar(m, 4000); return; } // sin efecto de escritura, pero Timón igual habla
     var largos = partes.map(function (p) { return Math.max(20, (p.textContent || "").length); });
     var total = largos.reduce(function (a, b) { return a + b; }, 0);
-    var tiempo = Math.min(16000, Math.max(2500, total * 9));        // duración total de la "escritura"
+    var tiempo = Math.min(5000, Math.max(1200, total * 3.5));       // duración total de la "escritura" (rápida)
     var seguir = true, terminado = false, k = 0, reloj = null;
     partes.forEach(function (p) { p.classList.add("por-mostrar"); });
     m.classList.add("escribiendo-respuesta");

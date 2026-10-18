@@ -77,9 +77,20 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .encuadre img{width:100%;height:auto;display:block;user-select:none;-webkit-user-drag:none}
 .mascota .boca{position:absolute;left:46.6%;top:24.2%;width:6.8%;height:2.6%;border-radius:40% 40% 55% 55%;
   background:radial-gradient(ellipse at 50% 80%,#c24b5a 0%,#7a1f2e 60%,#4a0f1b 100%);opacity:0;transform-origin:50% 30%;box-shadow:inset 0 2px 0 #fff8}
-/* Siempre "vivo": respira y se balancea suavemente */
-.mascota{animation:respira 3.2s ease-in-out infinite;transform-origin:50% 100%;will-change:transform}
-@keyframes respira{0%,100%{transform:rotate(0) translateY(0) scale(1)}30%{transform:rotate(-1.4deg) translateY(-2px) scale(1.012)}70%{transform:rotate(1.4deg) translateY(-1px) scale(1.006)}}
+/* Siempre "vivo": respira suavemente; los brazos se mueven apenas */
+.mascota{animation:respira 3.4s ease-in-out infinite;transform-origin:50% 100%;will-change:transform}
+@keyframes respira{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1.5px) scale(1.01)}}
+/* Brazos: capas separadas que giran desde el codo */
+.encuadre .brazo{position:absolute;inset:0;width:100%;height:auto;pointer-events:none;will-change:transform}
+.encuadre .brazo.izq{transform-origin:26% 47.3%;animation:reposo-izq 3.4s ease-in-out infinite}
+.encuadre .brazo.der{transform-origin:74% 47.3%;animation:reposo-der 3.4s ease-in-out infinite}
+@keyframes reposo-izq{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+@keyframes reposo-der{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}
+/* Al hablar: gesticula con las manos (el cuerpo casi no se mueve) */
+.mascota.hablando .brazo.izq{animation:gesto-izq 1.5s ease-in-out infinite}
+.mascota.hablando .brazo.der{animation:gesto-der 1.5s ease-in-out infinite;animation-delay:-.55s}
+@keyframes gesto-izq{0%,100%{transform:rotate(0)}20%{transform:rotate(16deg)}40%{transform:rotate(4deg)}60%{transform:rotate(12deg)}80%{transform:rotate(-5deg)}}
+@keyframes gesto-der{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}45%{transform:rotate(-3deg)}65%{transform:rotate(-17deg)}85%{transform:rotate(4deg)}}
 /* Parpadeo: párpados color piel que bajan y suben rápido */
 .parpado{position:absolute;top:15.6%;width:7.4%;height:4.8%;border-radius:50% 50% 45% 45%;transform-origin:50% 0;transform:scaleY(0);
   background:radial-gradient(ellipse at 50% 30%,#f6c8a8 0%,#eab092 70%,#dc9c7c 100%);box-shadow:inset 0 -2px 0 #3d2419,0 1px 1px rgba(80,40,20,.25);animation:parpadeo 4.2s infinite;pointer-events:none}
@@ -87,9 +98,9 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .parpado.der{left:53.3%}
 @keyframes parpadeo{0%,90%,100%{transform:scaleY(0)}93%,95%{transform:scaleY(1)}}
 .mascota.hablando .boca{opacity:1;animation:boca .2s ease-in-out infinite alternate}
-.mascota.hablando{animation:cabeceo .9s ease-in-out infinite;transform-origin:50% 100%}
+.mascota.hablando{animation:cabeceo 1.5s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes boca{from{transform:scaleY(.2) scaleX(.85)}to{transform:scaleY(1.2) scaleX(1)}}
-@keyframes cabeceo{0%,100%{transform:rotate(0) translateY(0) scale(1)}20%{transform:rotate(-3deg) translateY(-3px) scale(1.01)}50%{transform:rotate(0) translateY(-1px) scale(1.02)}80%{transform:rotate(3deg) translateY(-3px) scale(1.01)}}
+@keyframes cabeceo{0%,100%{transform:translateY(0)}25%{transform:translateY(-1.5px)}50%{transform:translateY(0)}75%{transform:translateY(-1px)}}
 .por-mostrar{opacity:0;transform:translateY(6px)}
 .mostrado{animation:aparecer .35s ease both}
 /* Efecto de escritura: cada bloque aparece de arriba hacia abajo mientras Timón habla */
