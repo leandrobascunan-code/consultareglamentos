@@ -77,6 +77,15 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .encuadre img{width:100%;height:auto;display:block;user-select:none;-webkit-user-drag:none}
 .mascota .boca{position:absolute;left:46.6%;top:24.2%;width:6.8%;height:2.6%;border-radius:40% 40% 55% 55%;
   background:radial-gradient(ellipse at 50% 80%,#c24b5a 0%,#7a1f2e 60%,#4a0f1b 100%);opacity:0;transform-origin:50% 30%;box-shadow:inset 0 2px 0 #fff8}
+/* Siempre "vivo": respira y se balancea suavemente */
+.mascota{animation:respira 3.2s ease-in-out infinite;transform-origin:50% 100%;will-change:transform}
+@keyframes respira{0%,100%{transform:rotate(0) translateY(0) scale(1)}30%{transform:rotate(-1.4deg) translateY(-2px) scale(1.012)}70%{transform:rotate(1.4deg) translateY(-1px) scale(1.006)}}
+/* Parpadeo: párpados color piel que bajan y suben rápido */
+.parpado{position:absolute;top:15.6%;width:7.4%;height:4.8%;border-radius:50% 50% 45% 45%;transform-origin:50% 0;transform:scaleY(0);
+  background:radial-gradient(ellipse at 50% 30%,#f6c8a8 0%,#eab092 70%,#dc9c7c 100%);box-shadow:inset 0 -2px 0 #3d2419,0 1px 1px rgba(80,40,20,.25);animation:parpadeo 4.2s infinite;pointer-events:none}
+.parpado.izq{left:39.8%}
+.parpado.der{left:53.3%}
+@keyframes parpadeo{0%,90%,100%{transform:scaleY(0)}93%,95%{transform:scaleY(1)}}
 .mascota.hablando .boca{opacity:1;animation:boca .2s ease-in-out infinite alternate}
 .mascota.hablando{animation:cabeceo .9s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes boca{from{transform:scaleY(.2) scaleX(.85)}to{transform:scaleY(1.2) scaleX(1)}}
@@ -287,4 +296,5 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
   .modal-caja{max-height:100dvh;height:100dvh;border-radius:0}
 }
 @media (max-width:380px){ .barra-titulo span{display:none} }
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Con "reducir movimiento" activado se calman los efectos de texto, pero Timón sigue moviéndose y parpadeando */
+@media (prefers-reduced-motion:reduce){.msg,.mostrado,.escribiendo-bloque,.modal,.toast{animation:none!important}}

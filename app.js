@@ -336,7 +336,12 @@
   //  RENDER DE MENSAJES
   // =====================================================================
   var chat;
-  function mascotaHTML(clase) { return '<div class="mascota ' + (clase || "") + '"><div class="encuadre"><img src="estudiante.png" alt=""><span class="boca"></span></div></div>'; }
+  // Timón: imagen + boca animada + párpados (cada copia parpadea en un momento distinto)
+  function mascotaHTML(clase) {
+    var d = "animation-delay:" + (Math.random() * 3).toFixed(2) + "s", d2 = "animation-delay:-" + (Math.random() * 2).toFixed(2) + "s";
+    return '<div class="mascota ' + (clase || "") + '" style="' + d2 + '"><div class="encuadre"><img src="estudiante.png" alt="">' +
+      '<span class="boca"></span><span class="parpado izq" style="' + d + '"></span><span class="parpado der" style="' + d + '"></span></div></div>';
+  }
   function bajar() { setTimeout(function () { chat.scrollTo({ top: chat.scrollHeight, behavior: "auto" }); }, 30); }
   function irA(m) { setTimeout(function () { chat.scrollTo({ top: Math.max(0, m.offsetTop - 12), behavior: "auto" }); }, 30); }
   function msgIA(html, opciones) {
@@ -748,7 +753,8 @@
   // Tocar la respuesta la muestra completa de inmediato.
   function revelar(m, cont) {
     var partes = [].slice.call(cont.children), mc = $(".mascota", m);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !partes.length) return;
+    if (!partes.length) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { hablar(m, 4000); return; } // sin efecto de escritura, pero Timón igual habla
     var largos = partes.map(function (p) { return Math.max(20, (p.textContent || "").length); });
     var total = largos.reduce(function (a, b) { return a + b; }, 0);
     var tiempo = Math.min(16000, Math.max(2500, total * 9));        // duración total de la "escritura"
