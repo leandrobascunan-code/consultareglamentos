@@ -22,7 +22,12 @@ window.DATOS_BASE = {
     historia: "",
     fuente: "Reglamento Interno Escolar 2025, Artículos 4 a 6 (pp. 7-10). El PEI completo puede cargarse desde el Panel."
   },
-  roles: ["Docente", "Equipo directivo y de gestión", "Asistente de la educación"],
+  roles: ["Docente", "Equipo directivo y de gestión", "Asistente de la educación", "Apoderado/a", "Estudiante"],
+  /* Cómo debe responder la IA según el rol (se envía junto a la consulta) */
+  guiaRoles: {
+    "Apoderado/a": "Es madre, padre o apoderado/a. Usa lenguaje claro y cordial. Explica sus derechos y deberes según el RIE, a quién acudir siguiendo el conducto regular (profesor/a jefe, Inspectoría General, Convivencia Escolar, UTP, Dirección), qué plazos tiene y cómo presentar solicitudes, justificaciones o apelaciones por escrito. No le indiques procedimientos internos que corresponden solo al personal.",
+    "Estudiante": "Es un/a estudiante. Háblale de tú, con frases cortas, lenguaje simple, cercano y respetuoso. Explica sus derechos y deberes, qué indica el reglamento y a qué adulto de confianza o profesional del colegio puede acudir. Si relata una situación de riesgo, abuso, acoso o daño, anímalo/a a contarlo de inmediato a un adulto de confianza o a Convivencia Escolar."
+  },
   cargos: [
     { rol: "Docente", cargo: "Profesor/a jefe", funciones: "Acompaña y orienta a su curso; coordina con apoderados (entrevistas y reuniones); registra y monitorea asistencia, rendimiento y convivencia; participa en consejos de evaluación y en el análisis de promoción (informe con UTP); deriva casos a Convivencia, Orientación o PIE según los protocolos." },
     { rol: "Docente", cargo: "Profesor/a de asignatura", funciones: "Planifica, enseña y evalúa según las Bases Curriculares y el Reglamento de Evaluación 2026 (calendarización con 10 días hábiles, retroalimentación, registro de notas en 10 días hábiles); aplica adecuaciones PAI/PACI con apoyo PIE; resguarda el clima de aula y aplica el Manual de Convivencia." },
@@ -42,6 +47,22 @@ window.DATOS_BASE = {
     { rol: "Asistente de la educación", cargo: "Administrativo/a o Secretaría", funciones: "Atiende público y apoderados; gestiona documentación (certificados, solicitudes, formularios de cierre anticipado); resguarda la confidencialidad de la información de la comunidad." },
     { rol: "Asistente de la educación", cargo: "Auxiliar de servicios", funciones: "Mantiene espacios limpios y seguros; colabora en el PISE y en emergencias; informa a Inspectoría situaciones de riesgo o de convivencia." },
     { rol: "Asistente de la educación", cargo: "Encargado/a CRA (biblioteca)", funciones: "Gestiona el Centro de Recursos para el Aprendizaje; fomenta la lectura; apoya a docentes con recursos y préstamos." }
+  ],
+  /* Protocolos de actuación del Reglamento Interno Escolar 2025 (tabla oficial de la p. 74 del RIE) */
+  protocolos: [
+    { anexo: "Anexo 1", titulo: "Protocolo de actuación frente a la detección de situaciones de vulneración de derechos de estudiantes", pagina: 75, responsables: "Adulto responsable, Profesor jefe, Encargada de convivencia escolar / Dupla psicosocial, Inspector(a) General, Director" },
+    { anexo: "Anexo 2", titulo: "Protocolos de actuación frente a situaciones de maltrato, acoso escolar o violencia entre miembros de la comunidad educativa (A. entre estudiantes; B. de un adulto a un estudiante; C. de un estudiante a un adulto; D. entre adultos; E. fuera del establecimiento)", pagina: 80, responsables: "Encargado de convivencia escolar, Dupla psicosocial, Inspectora general, Director" },
+    { anexo: "Anexo 3", titulo: "Protocolo de acción frente a la detección de bullying, ciberbullying y acoso escolar", pagina: 90, responsables: "Encargado de convivencia, Dupla psicosocial" },
+    { anexo: "Anexo 4", titulo: "Protocolo frente a agresiones sexuales y hechos de connotación sexual que atenten contra la integridad de los estudiantes", pagina: 94, responsables: "Dupla psicosocial" },
+    { anexo: "Anexo 5", titulo: "Protocolo de actuación para abordar situaciones relacionadas con drogas y alcohol en el establecimiento", pagina: 97, responsables: "Inspector(a) general, Dirección" },
+    { anexo: "Anexo 6", titulo: "Protocolo de retención de estudiantes en situación de embarazo, padres y madres", pagina: 99, responsables: "Dupla psicosocial, Unidad Técnico-Pedagógica" },
+    { anexo: "Anexo 7", titulo: "Protocolo de accidentes escolares (situaciones de emergencia y sospecha de enfermedad)", pagina: 102, responsables: "Encargada de enfermería, Inspectoría general" },
+    { anexo: "Anexo 8", titulo: "Protocolo sobre regulaciones de salidas pedagógicas y giras de estudio", pagina: 105, responsables: "Jefe de UTP, Coordinador(a) de ciclo, Inspector(a) general" },
+    { anexo: "Anexo 9", titulo: "Protocolo de administración de medicamentos a estudiantes", pagina: 109, responsables: "Dupla psicosocial" },
+    { anexo: "Anexo 10", titulo: "Protocolo ante conductas de ideación suicida y autolesiones", pagina: 110, responsables: "Inspector/a general, Dupla psicosocial" },
+    { anexo: "Anexo 11", titulo: "Protocolo de respuesta a situaciones de desregulación emocional y conductual de estudiantes (A. Trastorno del Espectro Autista; B. General)", pagina: 112, responsables: "Dupla psicosocial, Profesor(a) diferencial" },
+    { anexo: "PISE", titulo: "Plan Integral de Seguridad Escolar: emergencias, evacuación, sismos e incendios", pagina: 126, responsables: "Grupo de emergencia, coordinadores de piso o área" },
+    { anexo: "Evaluación", titulo: "Protocolo para la aplicación de evaluaciones pendientes (Reglamento de Evaluación 2026)", pagina: 0, responsables: "Docente de asignatura, UTP, Inspectoría General" }
   ],
   /* Normativa con enlaces verificados en la Biblioteca del Congreso Nacional (BCN) */
   normativa: [

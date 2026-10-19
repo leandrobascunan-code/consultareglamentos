@@ -288,6 +288,8 @@
   //  PERFIL (rol y cargo) – dura solo esta conversación
   // =====================================================================
   var PATRONES_CARGO = [
+    [/\b(apoderad[oa]|mam[aá]|pap[aá]|madre|padre|tutor[a]?)\b/i, "Apoderado/a", ""],
+    [/\b(alumn[oa]|estudiante)\b|\bsoy de \d/i, "Estudiante", ""],
     [/\b(jef[ae]s?\s+(de\s+)?(la\s+)?utp|utp|jef[ae]\s+t[eé]cnic|unidad t[eé]cnica)/i, "Equipo directivo y de gestión", "Jefe/a de UTP"],
     [/\b(subdirector|subdirectora)/i, "Equipo directivo y de gestión", "Subdirector/a"],
     [/\b(director|directora)\b/i, "Equipo directivo y de gestión", "Director/a"],
@@ -321,7 +323,8 @@
   }
   function funcionesDe(cargo) { var c = catalogoEfectivo().cargos; for (var i = 0; i < c.length; i++) if (c[i].cargo === cargo) return c[i].funciones; return ""; }
   function fijarPerfil(rol, cargo) {
-    estado.perfil = { rol: rol || estado.perfil.rol, cargo: cargo || "", funciones: funcionesDe(cargo) };
+    var r = rol || estado.perfil.rol;
+    estado.perfil = { rol: r, cargo: cargo || "", funciones: funcionesDe(cargo) || ((BASE.guiaRoles || {})[r] || "") };
     estado.pasoPerfil = "listo";
     pintarPerfil();
   }
@@ -336,6 +339,8 @@
     "Docente": ["¿Qué hago si un estudiante falta a una prueba?", "¿Cuántas calificaciones debo registrar por semestre?", "¿Cuándo debo reevaluar a todo el curso?", "¿Cómo actúo ante una agresión en la sala?"],
     "Equipo directivo y de gestión": ["¿Cómo funciona la promoción con asistencia menor a 85%?", "¿Qué pasos tiene el debido proceso ante una falta gravísima?", "Resume el protocolo de vulneración de derechos", "¿Cómo se solicita el cierre anticipado del año escolar?"],
     "Asistente de la educación": ["¿Qué hago si presencio una pelea en el recreo?", "¿Cómo actuar ante un accidente escolar?", "¿Qué hacer ante una desregulación emocional?", "¿Cómo se administran medicamentos a estudiantes?"],
+    "Apoderado/a": ["¿Cómo justifico una inasistencia de mi hijo/a?", "¿Qué hago si mi hijo/a sufre acoso escolar?", "¿Qué se necesita para ser promovido de curso?", "¿Cómo solicito una entrevista con el profesor/a jefe?"],
+    "Estudiante": ["¿Qué pasa si falto a una prueba?", "¿Puedo usar el celular en clases?", "¿Qué hago si me están molestando?", "¿Con qué nota apruebo una asignatura?"],
     "": ["¿Qué dice el reglamento sobre el uso de celulares?", "¿Cuáles son las faltas gravísimas?", "¿Cómo se calcula el promedio anual?", "¿Qué hacer ante un caso de ciberacoso?"]
   };
 
@@ -403,20 +408,22 @@
     var w = el("section", "bienvenida");
     w.innerHTML = '<div class="figura">' + mascotaHTML("hablando") + '</div><div class="texto">' +
       "<h1>¡Hola! Soy Timón 👋</h1>" +
-      "<p>Soy el asistente virtual del <b>" + esc(info.nombre) + "</b>, " + esc(info.dependencia) + ". Te ayudo a revisar y aplicar el <b>Reglamento Interno</b> y el <b>Reglamento de Evaluación 2026</b>, citando siempre la fuente.</p>" +
+      "<p>Soy el asistente virtual del <b>" + esc(info.nombre) + "</b><span class=\"solo-pc\">, " + esc(info.dependencia) + "</span>. Te ayudo a revisar y aplicar el <b>Reglamento Interno</b> y el <b>Reglamento de Evaluación 2026</b>, citando siempre la fuente.</p>" +
       "</div>" +
-      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud de estudiantes, familias o funcionarios. Si los detecto, te propondré una versión anónima. No guardo el contenido de tus consultas; solo se cuenta, de forma anónima, el tema general y el rol para estadísticas del colegio.</div></div>";
+      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud<span class=\"solo-pc\"> de estudiantes, familias o funcionarios</span>. Si los detecto, te propondré una versión anónima. No guardo tus consultas<span class=\"solo-pc\">; solo se cuenta, de forma anónima, el tema general y el rol para estadísticas del colegio</span>.</div></div>" +
+      '<div class="firma-movil"><img src="firma-autor.png?v=1.12" alt="Creado por Leandro Bascuñán Valdebenito"></div>';
     chat.appendChild(w);
     setTimeout(function () { var mc = $(".mascota", w); if (mc) { mc.classList.remove("hablando"); mc.classList.add("saluda"); } }, 3800);
     preguntarRol(false);
   }
   function preguntarRol(cambio) {
     estado.pasoPerfil = "rol";
-    var m = msgIA("<p>" + (cambio ? "Claro, ¿cuál es tu <b>rol</b>?" : "Para ajustar mis respuestas, ¿cuál es tu <b>rol</b> en el colegio?") + " Toca una opción o escríbelo con tus palabras. También puedes hacer tu pregunta directamente.</p>", { sinBajar: !cambio });
-    $(".contenido", m).appendChild(chips(BASE.roles.concat(["Otro: escribir"]), function (v, libre) {
+    var m = msgIA("<p>" + (cambio ? "Claro, ¿cuál es tu <b>rol</b>?" : "¿Cuál es tu <b>rol</b> en el colegio?") + " Toca una opción o escríbelo. <span class=\"solo-pc\">También puedes hacer tu pregunta directamente.</span></p>", { sinBajar: !cambio });
+    var chRoles = chips(BASE.roles.concat(["Otro: escribir"]), function (v, libre) {
       if (libre) { var d = detectarPerfil("soy " + v); if (d) { fijarPerfil(d.rol, d.cargo || v); confirmarPerfil(); } else { fijarPerfil(v, v); confirmarPerfil(); } return; }
       fijarPerfil(v, ""); confirmarPerfil();
-    }));
+    });
+    chRoles.classList.add("roles"); $(".contenido", m).appendChild(chRoles);
     hablar(m);
   }
   function confirmarPerfil() {
@@ -712,7 +719,7 @@
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
       historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
-      fragmentos: frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; }),
+      fragmentos: (pideProtocolos(consultaBusqueda) ? indiceProtocolos() : []).concat(frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; })).slice(0, 5),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
       info: cat.info, fecha: new Date().toISOString().slice(0, 10)
@@ -750,12 +757,28 @@
         throw e;
       });
   }
+  // Índice completo de protocolos del RIE (tabla oficial p. 74), en dos partes para que quepa en el contexto de la IA
+  function pideProtocolos(t) { return /protocolo/i.test(t); }
+  function indiceProtocolos() {
+    var lineas = (BASE.protocolos || []).map(function (p) {
+      return "- " + p.anexo + ": " + p.titulo + (p.pagina ? " (RIE 2025, p. " + p.pagina + ")" : "") + ". Responsables: " + p.responsables + ".";
+    });
+    // Partes de hasta ~1.250 caracteres (el servidor recorta cada fragmento a 1.400)
+    var partes = [], actual = "LISTA COMPLETA (" + lineas.length + " protocolos; nómbralos TODOS con su página y responsables):";
+    lineas.forEach(function (l) { if ((actual + "\n" + l).length > 1250) { partes.push(actual); actual = l; } else actual += "\n" + l; });
+    partes.push(actual);
+    return partes.map(function (t, i) { return { fuente: "Reglamento Interno Escolar 2025, p. 74 · Índice de protocolos y responsables (" + (i + 1) + "/" + partes.length + ")", texto: t }; });
+  }
   function respuestaLocal(consulta, frags, normativa, motivo) {
     var md = [];
     md.push("## Respuesta desde la base local");
     md.push(motivo === "sin-servidor" ? "El asistente con IA aún no está conectado, así que te muestro lo que dicen los documentos del colegio sobre tu consulta:" :
       (/l[ií]mite|ocupado|saturad/i.test(motivo || "") ? motivo.replace(/\.?\s*Te muestro.*$/, ".") + " Mientras tanto, esto es lo más pertinente de los documentos del colegio:" :
         "No pude conectarme con el servicio de IA en este momento (puede no haber internet). Te muestro lo más pertinente de los documentos del colegio:"));
+    if (pideProtocolos(consulta)) {
+      md.push("### Protocolos de actuación del Reglamento Interno (RIE 2025, p. 74)");
+      md.push("| Protocolo | Página | Responsables |\n|---|---|---|\n" + BASE.protocolos.map(function (p) { return "| " + p.anexo + ": " + p.titulo + " | " + (p.pagina ? "p. " + p.pagina : "Reg. Evaluación 2026") + " | " + p.responsables + " |"; }).join("\n"));
+    }
     if (!frags.length) md.push("No encontré fragmentos relacionados en los reglamentos. Prueba con otras palabras (por ejemplo: *inasistencia a prueba*, *faltas graves*, *promoción*).");
     frags.slice(0, 3).forEach(function (r) {
       md.push("### " + (r.f.s || (docBase(r.f.d) || {}).corto || "Fragmento"));
@@ -769,6 +792,7 @@
 
   // ---------- Pintar una respuesta completa ----------
   function mostrarRespuesta(r) {
+    r.texto = String(r.texto || "").replace(/\bRIE\s+20(2[0-46-9]|3\d)\b/g, "RIE 2025");   // el Reglamento Interno vigente es el 2025
     var idx = estado.respuestas.length; estado.respuestas.push(r); r.graficos = [];
     var bl = aBloques(r.texto);
     // Fuentes externas sugeridas (enlaces verificados) si la IA no las incluyó
@@ -1096,7 +1120,7 @@
   function biblioteca(pest) {
     pest = pest || "colegio";
     var cat = catalogoEfectivo();
-    var tabs = [["colegio", "Del establecimiento"], ["normativa", "Normativa"], ["sitios", "Sitios oficiales"], ["pei", "PEI e información"]];
+    var tabs = [["colegio", "Del establecimiento"], ["protocolos", "Protocolos"], ["normativa", "Normativa"], ["sitios", "Sitios oficiales"], ["pei", "PEI e información"]];
     var html = '<div class="pestanas">' + tabs.map(function (t) { return '<button class="pestana' + (t[0] === pest ? " activa" : "") + '" data-p="' + t[0] + '">' + esc(t[1]) + "</button>"; }).join("") + "</div>";
     function tarjeta(tipo, color, titulo, desc, botones) {
       return '<div class="doc"><div class="tipo" style="background:' + color + '">' + esc(tipo) + "</div><div><h3>" + esc(titulo) + "</h3>" + (desc ? "<p>" + esc(desc) + "</p>" : "") + '<div class="bot">' + botones + "</div></div></div>";
@@ -1116,6 +1140,15 @@
         html += "</div>";
       });
       if (!lista.length) html += "<p>No hay documentos disponibles.</p>";
+    } else if (pest === "protocolos") {
+      html += '<p style="margin:0 0 10px;color:var(--texto-suave)">Protocolos de actuación del Reglamento Interno Escolar 2025 (tabla oficial, p. 74). Toca <b>Ver</b> para abrir el reglamento en la página del protocolo.</p><div class="doc-lista">';
+      (BASE.protocolos || []).forEach(function (p, k) {
+        html += tarjeta(p.anexo === "PISE" ? "PISE" : p.anexo === "Evaluación" ? "EVAL" : p.anexo.replace("Anexo ", "A"), p.anexo === "Evaluación" ? "#1E8E5A" : "#D64545", p.titulo,
+          (p.pagina ? "RIE 2025, p. " + p.pagina + " · " : "Reglamento de Evaluación 2026 · ") + "Responsables: " + p.responsables,
+          '<button class="boton" type="button" data-proto="' + k + '">' + ico("ojo") + " Ver</button>" +
+          '<button class="boton sec" type="button" data-preg="' + k + '">' + ico("nuevo") + " Preguntar</button>");
+      });
+      html += "</div>";
     } else if (pest === "normativa") {
       var porCat = {}; BASE.normativa.forEach(function (n) { (porCat[n.categoria] = porCat[n.categoria] || []).push(n); });
       Object.keys(porCat).forEach(function (c) {
@@ -1137,6 +1170,15 @@
     abrirModal(ico("libro") + " Biblioteca", html, [{ texto: "Panel de administración", icono: "usuario", clase: "sec", fn: function () { location.href = "admin.html"; } }, { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
     document.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { biblioteca(b.getAttribute("data-p")); }; });
     document.querySelectorAll("[data-ver]").forEach(function (b) { b.onclick = function () { abrirDocumento(acciones[+b.getAttribute("data-ver")]); }; });
+    document.querySelectorAll("[data-proto]").forEach(function (b) {
+      b.onclick = function () {
+        var p = BASE.protocolos[+b.getAttribute("data-proto")];
+        if (p.pagina) abrirDocumento(docBase("rie"), p.pagina); else abrirTextoDoc(docBase("rep2026"), KB.fragmentos.filter(function (f) { return /evaluaciones pendientes/i.test(f.s); })[0]);
+      };
+    });
+    document.querySelectorAll("[data-preg]").forEach(function (b) {
+      b.onclick = function () { var p = BASE.protocolos[+b.getAttribute("data-preg")]; cerrarModal(); enviarConsulta("¿Cómo se aplica el " + p.titulo.replace(/\s*\(.*\)\s*$/, "") + "? Indica los pasos y responsables."); };
+    });
   }
 
   // ---------- Modal genérico ----------

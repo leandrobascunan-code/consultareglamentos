@@ -59,6 +59,32 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .btn-nueva{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--amarillo);color:var(--marino);font-weight:900;padding:8px 14px;font-size:.88rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .btn-nueva:hover{filter:brightness(1.05);transform:translateY(-1px)}
 .btn-nueva .txt-corto{display:none}
+/* Cuerpo: temas rápidos al lado del chat (computador) o en una fila arriba (celular) */
+.cuerpo{flex:1;display:flex;min-height:0;position:relative;z-index:1}
+.cuerpo .chat{flex:1;min-width:0}
+.temas{flex:none;width:230px;padding:16px 4px 16px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;border-right:1px solid var(--borde)}
+.temas-titulo{margin:0 0 2px;font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--texto-suave)}
+.temas .atajos{flex-direction:column;overflow:visible;padding:0;gap:8px}
+.temas .atajos .chip{justify-content:flex-start;white-space:normal;text-align:left;width:100%;padding:9px 12px;border-radius:14px;font-size:.86rem}
+.temas .perfil-chip{margin:0 0 4px;align-self:flex-start}
+.firma-movil{display:none}
+/* Computador: el logo del autor va al pie de la columna lateral (la barra de consulta queda compacta) */
+.temas{width:270px}
+.firma-lateral{margin-top:auto;padding-top:14px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.66rem;color:var(--texto-suave)}
+.firma-lateral img{width:100%;max-width:250px;height:auto}
+:root[data-theme="dark"] .firma-lateral img{filter:brightness(0) invert(1);opacity:.85}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .firma-lateral img{filter:brightness(0) invert(1);opacity:.85}}
+@media (min-width:900px){ .compositor .firma{display:none} }
+@media (max-width:899px){
+  .firma-lateral{display:none}
+  .cuerpo{flex-direction:column}
+  .temas{width:auto;flex-direction:row;align-items:center;padding:8px 10px 6px;border-right:0;border-bottom:1px solid var(--borde);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:6px}
+  .temas::-webkit-scrollbar{display:none}
+  .temas-titulo{display:none}
+  .temas .atajos{flex-direction:row;gap:6px}
+  .temas .atajos .chip{width:auto;white-space:nowrap;padding:5px 11px;font-size:.78rem;border-radius:99px}
+  .temas .perfil-chip{margin:0;white-space:nowrap;flex:none}
+}
 .msg{display:flex;gap:10px;margin:0 0 16px;animation:aparecer .35s ease both}
 @keyframes aparecer{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .msg.yo{justify-content:flex-end}
@@ -292,7 +318,22 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
   .bienvenida h1{font-size:1.1rem}
   .bienvenida .texto{font-size:.92rem;line-height:1.45}
   .bienvenida .texto p{margin:0 0 6px}
-  .bienvenida .privacidad{grid-column:1 / -1;margin:2px 0 12px;font-size:.82rem}
+  .bienvenida .privacidad{grid-column:1 / -1;margin:2px 0 8px;font-size:.78rem;padding:8px 10px;line-height:1.4}
+  .bienvenida{grid-template-columns:64px 1fr;padding:10px 10px 0 6px;margin-bottom:12px}
+  .bienvenida h1{font-size:1.02rem;margin-bottom:2px}
+  .bienvenida .texto{font-size:.86rem;line-height:1.4}
+  /* Celular: la barra de consulta queda compacta (solo la caja y el aviso) y el logo pasa a la bienvenida */
+  .compositor .firma{display:none}
+  .compositor{padding:6px 10px max(8px,env(safe-area-inset-bottom))}
+  .aviso-pie{margin-top:4px;font-size:.66rem}
+  .firma-movil{display:flex;grid-column:1 / -1;justify-content:center;align-items:center;gap:6px;margin:0 0 10px;font-size:.68rem;color:var(--texto-suave)}
+  .firma-movil img{height:46px;width:auto;max-width:80%}
+  :root[data-theme="dark"] .firma-movil img{filter:brightness(0) invert(1);opacity:.85}
+  .msg.ia .chips .chip{padding:6px 12px;font-size:.84rem}
+  .solo-pc{display:none}
+  /* Botones de rol en dos columnas para que la bienvenida quepa completa */
+  .chips.roles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .chips.roles .chip{justify-content:center;text-align:center;padding:6px 6px;font-size:.76rem;line-height:1.2;border-width:1.5px}
   .avatar{width:40px}
   .avatar.grande{width:72px}
   .msg.escribiendo-respuesta .avatar{width:50px}
