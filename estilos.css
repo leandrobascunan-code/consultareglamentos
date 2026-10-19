@@ -70,11 +70,13 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 .firma-movil{display:none}
 /* Computador: el logo del autor va al pie de la columna lateral (la barra de consulta queda compacta) */
 .temas{width:270px}
-.firma-lateral{margin-top:auto;padding-top:14px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.66rem;color:var(--texto-suave)}
+.firma-lateral-x{margin-top:auto;padding-top:14px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.66rem;color:var(--texto-suave)}
 .firma-lateral img{width:100%;max-width:250px;height:auto}
 :root[data-theme="dark"] .firma-lateral img{filter:brightness(0) invert(1);opacity:.85}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .firma-lateral img{filter:brightness(0) invert(1);opacity:.85}}
-@media (min-width:900px){ .compositor .firma{display:none} }
+/* El crédito del autor va siempre abajo, en el pie (computador y celular) */
+.firma-lateral,.firma-movil{display:none!important}
+.compositor .firma img{height:46px}
 @media (max-width:899px){
   .firma-lateral{display:none}
   .cuerpo{flex-direction:column}
@@ -323,8 +325,10 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
   .bienvenida h1{font-size:1.02rem;margin-bottom:2px}
   .bienvenida .texto{font-size:.86rem;line-height:1.4}
   /* Celular: la barra de consulta queda compacta (solo la caja y el aviso) y el logo pasa a la bienvenida */
-  .compositor .firma{display:none}
   .compositor{padding:6px 10px max(8px,env(safe-area-inset-bottom))}
+  .compositor .firma{margin-top:2px}
+  .compositor .firma img{height:30px}
+  .compositor .firma span{font-size:.6rem}
   .aviso-pie{margin-top:4px;font-size:.66rem}
   .firma-movil{display:flex;grid-column:1 / -1;justify-content:center;align-items:center;gap:6px;margin:0 0 10px;font-size:.68rem;color:var(--texto-suave)}
   .firma-movil img{height:46px;width:auto;max-width:80%}
@@ -362,3 +366,21 @@ svg{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}
 @media (max-width:380px){ .barra-titulo span{display:none} }
 /* Con "reducir movimiento" activado se calman los efectos de texto, pero Timón sigue moviéndose y parpadeando */
 @media (prefers-reduced-motion:reduce){.msg,.mostrado,.escribiendo-bloque,.modal,.toast{animation:none!important}}
+
+/* Gravedad de la falta: leve (amarillo), grave (naranjo), gravísima (rojo) */
+.falta{display:inline-block;padding:0 7px;border-radius:7px;font-weight:800;line-height:1.5;border:1px solid transparent}
+.falta.f-leve{background:#FFF3B0;color:#6B5200;border-color:#F2C200}
+.falta.f-grave{background:#FFD9B3;color:#8A3B00;border-color:#F08A24}
+.falta.f-gravisima{background:#FFD0D0;color:#9B1111;border-color:#D62828}
+.falta.f-pendiente{background:#E6ECF5;color:#2B3D5C;border-color:#9AAAC4}
+strong.nivel-falta{display:inline-block;margin:2px 0 4px}
+:root[data-theme="dark"] .falta.f-leve{background:#4A3E00;color:#FFE680;border-color:#C9A400}
+:root[data-theme="dark"] .falta.f-grave{background:#4D2600;color:#FFC08A;border-color:#E07B1A}
+:root[data-theme="dark"] .falta.f-gravisima{background:#4F1010;color:#FFB0B0;border-color:#E04848}
+:root[data-theme="dark"] .falta.f-pendiente{background:#26334A;color:#C9D6EA;border-color:#5A6E90}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .falta.f-leve{background:#4A3E00;color:#FFE680;border-color:#C9A400}
+  :root:not([data-theme="light"]) .falta.f-grave{background:#4D2600;color:#FFC08A;border-color:#E07B1A}
+  :root:not([data-theme="light"]) .falta.f-gravisima{background:#4F1010;color:#FFB0B0;border-color:#E04848}
+  :root:not([data-theme="light"]) .falta.f-pendiente{background:#26334A;color:#C9D6EA;border-color:#5A6E90}
+}

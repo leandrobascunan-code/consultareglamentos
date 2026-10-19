@@ -213,7 +213,7 @@
   }
   function etiquetaFuente(f) {
     var d = docBase(f.d) || { corto: f.d };
-    if (f.d === "rie") return "Reglamento Interno Escolar 2025, p. " + f.p + (f.s ? " · " + f.s : "");
+    if (f.d === "rie") return "Reglamento Interno Escolar 2026, p. " + f.p + (f.s ? " · " + f.s : "");
     return d.corto + (f.s ? " · " + f.s : "");
   }
   function extracto(texto, consulta, max) {
@@ -410,8 +410,7 @@
       "<h1>¡Hola! Soy Timón 👋</h1>" +
       "<p>Soy el asistente virtual del <b>" + esc(info.nombre) + "</b><span class=\"solo-pc\">, " + esc(info.dependencia) + "</span>. Te ayudo a revisar y aplicar el <b>Reglamento Interno</b> y el <b>Reglamento de Evaluación 2026</b>, citando siempre la fuente.</p>" +
       "</div>" +
-      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud<span class=\"solo-pc\"> de estudiantes, familias o funcionarios</span>. Si los detecto, te propondré una versión anónima. No guardo tus consultas<span class=\"solo-pc\">; solo se cuenta, de forma anónima, el tema general y el rol para estadísticas del colegio</span>.</div></div>" +
-      '<div class="firma-movil"><img src="firma-autor.png?v=1.12" alt="Creado por Leandro Bascuñán Valdebenito"></div>';
+      '<div class="privacidad">' + ico("escudoOk") + "<div><b>Protección de datos (Ley N° 21.719):</b> no escribas nombres, RUT, correos, teléfonos ni datos de salud<span class=\"solo-pc\"> de estudiantes, familias o funcionarios</span>. Si los detecto, te propondré una versión anónima. No guardo tus consultas<span class=\"solo-pc\">; solo se cuenta, de forma anónima, el tema general y el rol para estadísticas del colegio</span>.</div></div>";
     chat.appendChild(w);
     setTimeout(function () { var mc = $(".mascota", w); if (mc) { mc.classList.remove("hablando"); mc.classList.add("saluda"); } }, 3800);
     preguntarRol(false);
@@ -686,6 +685,12 @@
     if (estado.pasoPerfil !== "listo") estado.pasoPerfil = "listo"; // nunca obligamos a marcar el perfil
     var consultaBusqueda = opts.esRespuesta ? ultimaConsulta() + " " + texto : texto;
     var frags = buscar(consultaBusqueda, 5);
+    // Faltas de estudiantes: se asegura el artículo del RIE que clasifica la falta (leve, grave o gravísima)
+    if (RE_DISCIPLINA.test(consultaBusqueda) && !frags.some(function (r) { return /Art[ií]culo 36\b/.test(r.f.s || ""); })) {
+      var clasif = buscar(consultaBusqueda + " faltas leves graves gravísimas medidas", 8).filter(function (r) { return /Art[ií]culo 36\b/.test(r.f.s || ""); })[0];
+      if (clasif) frags.splice(Math.min(2, frags.length), 0, clasif);
+    }
+    if (!frags.length) frags = buscar(consultaBusqueda.replace(/[¿?¡!.,;:]/g, " ").split(/\s+/).filter(function (w) { return w.length > 4; }).join(" "), 5);
     var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
     var disciplinario = delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
@@ -719,7 +724,8 @@
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
       historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
-      fragmentos: (pideProtocolos(consultaBusqueda) ? indiceProtocolos() : []).concat(frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; })).slice(0, 5),
+      protocolos: pideProtocolos(consultaBusqueda),
+      fragmentos: indiceProtocolos(consultaBusqueda).concat(frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; })).slice(0, 6),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
       info: cat.info, fecha: new Date().toISOString().slice(0, 10)
@@ -757,17 +763,44 @@
         throw e;
       });
   }
-  // Índice completo de protocolos del RIE (tabla oficial p. 74), en dos partes para que quepa en el contexto de la IA
+  // Índice de protocolos del RIE 2026 (tablas oficiales pp. 67 y 211)
   function pideProtocolos(t) { return /protocolo/i.test(t); }
-  function indiceProtocolos() {
-    var lineas = (BASE.protocolos || []).map(function (p) {
-      return "- " + p.anexo + ": " + p.titulo + (p.pagina ? " (RIE 2025, p. " + p.pagina + ")" : "") + ". Responsables: " + p.responsables + ".";
+  // ¿Pregunta por los protocolos en general (lista) o por uno en particular?
+  function protocolosEnGeneral(t) {
+    var resto = String(t || "").toLowerCase().replace(/[¿?¡!.,;:()]/g, " ").split(/\s+/).filter(function (w) {
+      return w && !/^(protocolos?|cu[aá]les?|son|los|las|el|la|de|del|en|que|qu[eé]|hay|existen?|tiene|tienen|todos?|todas?|lista|listado|nombra|menciona|dame|indica|muestra|mu[eé]strame|rie|reglamento|interno|colegio|escuela|establecimiento|actuaci[oó]n|vigentes?|y|con|sus|responsables?|p[aá]ginas?|por|favor|me|puedes|podr[ií]as|cuantos|cu[aá]ntos|completos?|existentes?|2026|a|al|un|una|para)$/.test(w);
     });
-    // Partes de hasta ~1.250 caracteres (el servidor recorta cada fragmento a 1.400)
-    var partes = [], actual = "LISTA COMPLETA (" + lineas.length + " protocolos; nómbralos TODOS con su página y responsables):";
-    lineas.forEach(function (l) { if ((actual + "\n" + l).length > 1250) { partes.push(actual); actual = l; } else actual += "\n" + l; });
+    return resto.length === 0;
+  }
+  function tablaProtocolos() {
+    return "| Protocolo | Página | Responsables |\n|---|---|---|\n" + (BASE.protocolos || []).map(function (p) {
+      return "| " + (p.grupo === "Educación Parvularia" ? "Ed. Parvularia " + p.anexo.replace(/^\D+/, "N°") : p.anexo) + ": " + p.titulo.replace(/\|/g, "/") + " | " + (p.pagina ? "p. " + p.pagina : "Reg. Evaluación 2026") + " | " + p.responsables + " |";
+    }).join("\n");
+  }
+  function lineaProtocolo(p) {
+    return "- " + p.anexo + ": " + p.titulo + (p.pagina ? " (p. " + p.pagina + ")" : " (Reg. Evaluación 2026)") + ". Resp.: " + p.responsables + ".";
+  }
+  function indiceProtocolos(consulta) {
+    var lista = BASE.protocolos || [];
+    if (!pideProtocolos(consulta) || !lista.length) return [];
+    var fuente = "Reglamento Interno Escolar 2026, pp. 67 y 211 · Protocolos de actuación y responsables";
+    if (!protocolosEnGeneral(consulta)) {
+      // Uno en particular: solo las filas del índice que coinciden con la consulta (el resto lo aportan los fragmentos)
+      var pal = String(consulta).toLowerCase().replace(/[¿?¡!.,;:()]/g, " ").split(/\s+/).filter(function (w) { return w.length > 4 && !/protocolo/.test(w); }).map(function (w) { return w.slice(0, 5); });
+      var hits = lista.filter(function (p) { var t = (p.anexo + " " + p.titulo + " " + p.grupo).toLowerCase(); return pal.some(function (w) { return t.indexOf(w) >= 0; }); });
+      if (!hits.length) return [];
+      return [{ fuente: fuente, texto: "PROTOCOLOS RELACIONADOS DEL RIE 2026:\n" + hits.slice(0, 6).map(lineaProtocolo).join("\n") }];
+    }
+    // Lista completa en partes de hasta 1.350 caracteres (el servidor recorta cada fragmento a 1.400)
+    var partes = [], actual = "LISTA COMPLETA (" + lista.length + " entradas; nómbralas TODAS):";
+    var grupoActual = "";
+    lista.forEach(function (p) {
+      var l = (p.grupo !== grupoActual ? "[" + (p.grupo === "General" ? "Protocolos generales" : "Protocolos de Educación Parvularia") + "]\n" : "") + lineaProtocolo(p);
+      grupoActual = p.grupo;
+      if ((actual + "\n" + l).length > 1350) { partes.push(actual); actual = l; } else actual += "\n" + l;
+    });
     partes.push(actual);
-    return partes.map(function (t, i) { return { fuente: "Reglamento Interno Escolar 2025, p. 74 · Índice de protocolos y responsables (" + (i + 1) + "/" + partes.length + ")", texto: t }; });
+    return partes.map(function (t, i) { return { fuente: fuente + " (" + (i + 1) + "/" + partes.length + ")", texto: t }; });
   }
   function respuestaLocal(consulta, frags, normativa, motivo) {
     var md = [];
@@ -776,8 +809,8 @@
       (/l[ií]mite|ocupado|saturad/i.test(motivo || "") ? motivo.replace(/\.?\s*Te muestro.*$/, ".") + " Mientras tanto, esto es lo más pertinente de los documentos del colegio:" :
         "No pude conectarme con el servicio de IA en este momento (puede no haber internet). Te muestro lo más pertinente de los documentos del colegio:"));
     if (pideProtocolos(consulta)) {
-      md.push("### Protocolos de actuación del Reglamento Interno (RIE 2025, p. 74)");
-      md.push("| Protocolo | Página | Responsables |\n|---|---|---|\n" + BASE.protocolos.map(function (p) { return "| " + p.anexo + ": " + p.titulo + " | " + (p.pagina ? "p. " + p.pagina : "Reg. Evaluación 2026") + " | " + p.responsables + " |"; }).join("\n"));
+      md.push("### Protocolos de actuación del Reglamento Interno (RIE 2026, pp. 67 y 211)");
+      md.push(tablaProtocolos());
     }
     if (!frags.length) md.push("No encontré fragmentos relacionados en los reglamentos. Prueba con otras palabras (por ejemplo: *inasistencia a prueba*, *faltas graves*, *promoción*).");
     frags.slice(0, 3).forEach(function (r) {
@@ -790,16 +823,37 @@
     return md.join("\n\n");
   }
 
+  // ---------- Gravedad de la falta con colores: leve (amarillo), grave (naranjo), gravísima (rojo) ----------
+  function nivelFalta(w) { w = w.toLowerCase(); return /^grav[ií]sim/.test(w) ? "gravisima" : /^grave/.test(w) ? "grave" : /^leve/.test(w) ? "leve" : "pendiente"; }
+  function colorearFaltas(html) {
+    // Solo se tocan los textos, nunca las etiquetas ni los enlaces
+    return html.split(/(<[^>]+>)/).map(function (seg) {
+      if (!seg || seg.charAt(0) === "<") return seg;
+      return seg
+        .replace(/(Nivel de la falta:\s*)(Leve|Grave|Grav[ií]sima|Por determinar)/gi, function (m, a, n) { return a + '<span class="falta f-' + nivelFalta(n) + '">' + n + "</span>"; })
+        .replace(/\b(faltas?)\s+(leves?|graves?|grav[ií]simas?)\b((?:\s*(?:,|o|y|u)\s*(?:leves?|graves?|grav[ií]simas?)\b)*)/gi, function (m, f, n, resto) {
+          var r = resto.replace(/(leves?|graves?|grav[ií]simas?)/gi, function (x) { return '<span class="falta f-' + nivelFalta(x) + '">' + x + "</span>"; });
+          return '<span class="falta f-' + nivelFalta(n) + '">' + f + " " + n + "</span>" + r;
+        });
+    }).join("").replace(/(<strong>)(Nivel de la falta:)/g, '<strong class="nivel-falta">$2');
+  }
+
   // ---------- Pintar una respuesta completa ----------
   function mostrarRespuesta(r) {
-    r.texto = String(r.texto || "").replace(/\bRIE\s+20(2[0-46-9]|3\d)\b/g, "RIE 2025");   // el Reglamento Interno vigente es el 2025
+    r.texto = String(r.texto || "").replace(/\bRIE\s+20(2[0-57-9]|3\d)\b/g, "RIE 2026");   // el Reglamento Interno vigente es el 2026
+    // Pregunta general por los protocolos: se agrega SIEMPRE la tabla oficial completa (no depende de la IA)
+    if (r.busqueda && pideProtocolos(r.busqueda) && protocolosEnGeneral(r.busqueda) && !/Parvularia N°7/.test(r.texto)) {
+      var tablaP = "### Lista oficial de protocolos (RIE 2026, pp. 67 y 211)\n" + tablaProtocolos();
+      var corte = r.texto.search(/\n#{2,3} (?!En breve)/);
+      r.texto = corte > 0 ? r.texto.slice(0, corte) + "\n\n" + tablaP + "\n" + r.texto.slice(corte) : tablaP + "\n\n" + r.texto;
+    }
     var idx = estado.respuestas.length; estado.respuestas.push(r); r.graficos = [];
     var bl = aBloques(r.texto);
     // Fuentes externas sugeridas (enlaces verificados) si la IA no las incluyó
     var tieneExternas = /fuentes externas sugeridas/i.test(r.texto);
     r.externas = tieneExternas ? [] : fuentesPara(r.busqueda || r.consulta, 3);
     var m = msgIA("", { sinBajar: true }), cont = $(".contenido", m);
-    var html = (r.local ? '<span class="etiqueta-local">' + ico("archivo") + " Modo sin conexión · base local</span>" : "") + bloquesHTML(bl);
+    var html = (r.local ? '<span class="etiqueta-local">' + ico("archivo") + " Modo sin conexión · base local</span>" : "") + colorearFaltas(bloquesHTML(bl));
     cont.innerHTML = html;
     if (r.aviso) cont.insertAdjacentHTML("afterbegin", '<p class="etiqueta-local">' + ico("alerta") + " " + esc(r.aviso) + "</p>");
     bl.forEach(function (b, k) { if (b.t === "graf") { var h = cont.querySelector('.grafico-hueco[data-i="' + k + '"]'); if (h) dibujarGrafico(h, b.d, r.graficos); } });
@@ -1141,10 +1195,12 @@
       });
       if (!lista.length) html += "<p>No hay documentos disponibles.</p>";
     } else if (pest === "protocolos") {
-      html += '<p style="margin:0 0 10px;color:var(--texto-suave)">Protocolos de actuación del Reglamento Interno Escolar 2025 (tabla oficial, p. 74). Toca <b>Ver</b> para abrir el reglamento en la página del protocolo.</p><div class="doc-lista">';
+      html += '<p style="margin:0 0 10px;color:var(--texto-suave)">Protocolos de actuación del Reglamento Interno Escolar 2026: 17 generales, PISE, evaluaciones pendientes y 7 de Educación Parvularia (tablas oficiales, pp. 67 y 211). Toca <b>Ver</b> para abrir el reglamento en la página del protocolo.</p>';
+      var grupoLib = "";
       (BASE.protocolos || []).forEach(function (p, k) {
-        html += tarjeta(p.anexo === "PISE" ? "PISE" : p.anexo === "Evaluación" ? "EVAL" : p.anexo.replace("Anexo ", "A"), p.anexo === "Evaluación" ? "#1E8E5A" : "#D64545", p.titulo,
-          (p.pagina ? "RIE 2025, p. " + p.pagina + " · " : "Reglamento de Evaluación 2026 · ") + "Responsables: " + p.responsables,
+        if (p.grupo !== grupoLib) { html += (grupoLib ? "</div>" : "") + '<h3 class="cat-titulo">' + ico("libro") + (p.grupo === "Educación Parvularia" ? "Educación Parvularia (7 protocolos)" : "Protocolos generales (17), PISE y evaluaciones") + '</h3><div class="doc-lista">'; grupoLib = p.grupo; }
+        html += tarjeta(p.anexo === "PISE" ? "PISE" : p.anexo === "Evaluación" ? "EVAL" : (p.grupo === "Educación Parvularia" ? "P" : "") + p.anexo.replace(/^\D+/, ""), p.anexo === "Evaluación" ? "#1E8E5A" : p.grupo === "Educación Parvularia" ? "#2E9BD6" : "#D64545", p.titulo,
+          (p.pagina ? "RIE 2026, p. " + p.pagina + " · " : "Reglamento de Evaluación 2026 · ") + "Responsables: " + p.responsables,
           '<button class="boton" type="button" data-proto="' + k + '">' + ico("ojo") + " Ver</button>" +
           '<button class="boton sec" type="button" data-preg="' + k + '">' + ico("nuevo") + " Preguntar</button>");
       });
@@ -1177,7 +1233,7 @@
       };
     });
     document.querySelectorAll("[data-preg]").forEach(function (b) {
-      b.onclick = function () { var p = BASE.protocolos[+b.getAttribute("data-preg")]; cerrarModal(); enviarConsulta("¿Cómo se aplica el " + p.titulo.replace(/\s*\(.*\)\s*$/, "") + "? Indica los pasos y responsables."); };
+      b.onclick = function () { var p = BASE.protocolos[+b.getAttribute("data-preg")]; cerrarModal(); enviarConsulta("¿Cómo se aplica el " + (p.grupo === "Educación Parvularia" ? "protocolo de Educación Parvularia de " : "protocolo de ") + p.titulo.replace(/\s*\(.*\)\s*$/, "").toLowerCase() + " (" + p.anexo + ")? Indica los pasos y responsables."); };
     });
   }
 

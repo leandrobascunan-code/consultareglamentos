@@ -20,7 +20,7 @@ window.DATOS_BASE = {
     sellos: "1) Formación de personas para la continuidad de estudios superiores. 2) Desarrollo de la autonomía, compromiso y constancia con los procesos educativos. 3) Formación de personas solidarias y responsables en aspectos sociales y medioambientales. 4) Desarrollo de aprendizajes deportivos y artísticos.",
     valores: "Respeto, Responsabilidad y Empatía (enfoque pedagógico humanista).",
     historia: "",
-    fuente: "Reglamento Interno Escolar 2025, Artículos 4 a 6 (pp. 7-10). El PEI completo puede cargarse desde el Panel."
+    fuente: "Reglamento Interno Escolar 2026, Artículo 6 (p. 12). El PEI completo puede cargarse desde el Panel."
   },
   roles: ["Docente", "Equipo directivo y de gestión", "Asistente de la educación", "Apoderado/a", "Estudiante"],
   /* Cómo debe responder la IA según el rol (se envía junto a la consulta) */
@@ -48,21 +48,34 @@ window.DATOS_BASE = {
     { rol: "Asistente de la educación", cargo: "Auxiliar de servicios", funciones: "Mantiene espacios limpios y seguros; colabora en el PISE y en emergencias; informa a Inspectoría situaciones de riesgo o de convivencia." },
     { rol: "Asistente de la educación", cargo: "Encargado/a CRA (biblioteca)", funciones: "Gestiona el Centro de Recursos para el Aprendizaje; fomenta la lectura; apoya a docentes con recursos y préstamos." }
   ],
-  /* Protocolos de actuación del Reglamento Interno Escolar 2025 (tabla oficial de la p. 74 del RIE) */
+  /* Protocolos de actuación del Reglamento Interno Escolar 2026 (tablas oficiales de las pp. 67 y 211 del RIE) */
   protocolos: [
-    { anexo: "Anexo 1", titulo: "Protocolo de actuación frente a la detección de situaciones de vulneración de derechos de estudiantes", pagina: 75, responsables: "Adulto responsable, Profesor jefe, Encargada de convivencia escolar / Dupla psicosocial, Inspector(a) General, Director" },
-    { anexo: "Anexo 2", titulo: "Protocolos de actuación frente a situaciones de maltrato, acoso escolar o violencia entre miembros de la comunidad educativa (A. entre estudiantes; B. de un adulto a un estudiante; C. de un estudiante a un adulto; D. entre adultos; E. fuera del establecimiento)", pagina: 80, responsables: "Encargado de convivencia escolar, Dupla psicosocial, Inspectora general, Director" },
-    { anexo: "Anexo 3", titulo: "Protocolo de acción frente a la detección de bullying, ciberbullying y acoso escolar", pagina: 90, responsables: "Encargado de convivencia, Dupla psicosocial" },
-    { anexo: "Anexo 4", titulo: "Protocolo frente a agresiones sexuales y hechos de connotación sexual que atenten contra la integridad de los estudiantes", pagina: 94, responsables: "Dupla psicosocial" },
-    { anexo: "Anexo 5", titulo: "Protocolo de actuación para abordar situaciones relacionadas con drogas y alcohol en el establecimiento", pagina: 97, responsables: "Inspector(a) general, Dirección" },
-    { anexo: "Anexo 6", titulo: "Protocolo de retención de estudiantes en situación de embarazo, padres y madres", pagina: 99, responsables: "Dupla psicosocial, Unidad Técnico-Pedagógica" },
-    { anexo: "Anexo 7", titulo: "Protocolo de accidentes escolares (situaciones de emergencia y sospecha de enfermedad)", pagina: 102, responsables: "Encargada de enfermería, Inspectoría general" },
-    { anexo: "Anexo 8", titulo: "Protocolo sobre regulaciones de salidas pedagógicas y giras de estudio", pagina: 105, responsables: "Jefe de UTP, Coordinador(a) de ciclo, Inspector(a) general" },
-    { anexo: "Anexo 9", titulo: "Protocolo de administración de medicamentos a estudiantes", pagina: 109, responsables: "Dupla psicosocial" },
-    { anexo: "Anexo 10", titulo: "Protocolo ante conductas de ideación suicida y autolesiones", pagina: 110, responsables: "Inspector/a general, Dupla psicosocial" },
-    { anexo: "Anexo 11", titulo: "Protocolo de respuesta a situaciones de desregulación emocional y conductual de estudiantes (A. Trastorno del Espectro Autista; B. General)", pagina: 112, responsables: "Dupla psicosocial, Profesor(a) diferencial" },
-    { anexo: "PISE", titulo: "Plan Integral de Seguridad Escolar: emergencias, evacuación, sismos e incendios", pagina: 126, responsables: "Grupo de emergencia, coordinadores de piso o área" },
-    { anexo: "Evaluación", titulo: "Protocolo para la aplicación de evaluaciones pendientes (Reglamento de Evaluación 2026)", pagina: 0, responsables: "Docente de asignatura, UTP, Inspectoría General" }
+    { anexo: "Protocolo N°1", grupo: "General", titulo: "Vulneración de derechos de estudiantes (detección)", pagina: 68, responsables: "Adulto responsable, Profesor jefe, Director" },
+    { anexo: "Protocolo N°2", grupo: "General", titulo: "Maltrato, acoso escolar o violencia entre miembros de la comunidad (A. entre estudiantes; B. adulto a estudiante; C. estudiante a adulto; D. entre adultos; E. fuera del establecimiento)", pagina: 73, responsables: "Encargado de convivencia, Dupla psicosocial, Inspectoría general, Director" },
+    { anexo: "Protocolo N°3", grupo: "General", titulo: "Bullying, ciberbullying y acoso escolar", pagina: 85, responsables: "Encargado de convivencia, Dupla psicosocial" },
+    { anexo: "Protocolo N°4", grupo: "General", titulo: "Hechos de connotación sexual y violencia de género", pagina: 88, responsables: "Dupla psicosocial" },
+    { anexo: "Protocolo N°5", grupo: "General", titulo: "Drogas y alcohol en el establecimiento", pagina: 91, responsables: "Inspector(a) general, Dirección" },
+    { anexo: "Protocolo N°6", grupo: "General", titulo: "Retención de estudiantes en situación de embarazo, padres y madres", pagina: 95, responsables: "Dupla psicosocial, UTP" },
+    { anexo: "Protocolo N°7", grupo: "General", titulo: "Accidentes escolares (emergencias y sospecha de enfermedad)", pagina: 99, responsables: "Encargada de enfermería, Inspectoría general" },
+    { anexo: "Protocolo N°8", grupo: "General", titulo: "Salidas pedagógicas y giras de estudio", pagina: 103, responsables: "Jefe de UTP, Coordinador(a) de ciclo, Inspector(a) general" },
+    { anexo: "Protocolo N°9", grupo: "General", titulo: "Administración de medicamentos", pagina: 108, responsables: "Dupla psicosocial" },
+    { anexo: "Protocolo N°10", grupo: "General", titulo: "Conductas autolesivas y suicidas", pagina: 110, responsables: "Inspector(a) general, Dupla psicosocial" },
+    { anexo: "Protocolo N°11", grupo: "General", titulo: "Desregulación emocional y conductual (Trastorno del Espectro Autista y general)", pagina: 113, responsables: "Dupla psicosocial, Profesor(a) diferencial" },
+    { anexo: "Protocolo N°12", grupo: "General", titulo: "Desregulaciones emocionales y conductuales de estudiantes (respuesta general)", pagina: 117, responsables: "Profesor(a) diferencial, Psicólogo(a) PIE, Dupla psicosocial" },
+    { anexo: "Protocolo N°13", grupo: "General", titulo: "Sospecha de porte de arma", pagina: 121, responsables: "Dirección, Inspectoría, Convivencia escolar/dupla, Funcionarios" },
+    { anexo: "Protocolo N°14", grupo: "General", titulo: "Porte de arma dentro del colegio", pagina: 124, responsables: "Dirección, Inspectoría, Convivencia escolar/dupla, Funcionarios" },
+    { anexo: "Protocolo N°15", grupo: "General", titulo: "Aula Segura (Ley 21.128)", pagina: 128, responsables: "Dirección, Inspectoría, Equipo de convivencia escolar" },
+    { anexo: "Protocolo N°16", grupo: "General", titulo: "Agresión física y/o psicológica de un apoderado o tercero hacia un funcionario", pagina: 133, responsables: "Dirección, Inspectoría, Equipo de convivencia escolar" },
+    { anexo: "Protocolo N°17", grupo: "General", titulo: "Regulación del uso de dispositivos móviles (el documento cita \"Ley 21.9801\")", pagina: 136, responsables: "Inspectoría general, Dirección, Convivencia" },
+    { anexo: "PISE", grupo: "General", titulo: "Plan Integral de Seguridad Escolar: sismo, incendio, evacuación y otras emergencias", pagina: 143, responsables: "Grupo de emergencia, coordinadores de piso o área" },
+    { anexo: "Evaluación", grupo: "General", titulo: "Aplicación de evaluaciones pendientes (Reglamento de Evaluación 2026)", pagina: 0, responsables: "Docente de asignatura, UTP, Inspectoría general" },
+    { anexo: "Parvularia N°1", grupo: "Educación Parvularia", titulo: "Sospecha o detección de vulneración o amenaza de vulneración de derechos de niñas y niños", pagina: 211, responsables: "Adulto responsable, Profesor jefe, Encargado de convivencia, Director" },
+    { anexo: "Parvularia N°2", grupo: "Educación Parvularia", titulo: "Maltrato infantil, abuso sexual, agresiones sexuales y hechos de connotación sexual contra párvulos", pagina: 219, responsables: "Encargado de convivencia, Dupla psicosocial, Inspectoría general, Director" },
+    { anexo: "Parvularia N°3", grupo: "Educación Parvularia", titulo: "Acoso, maltrato y violencia entre miembros de la comunidad que no sean párvulos", pagina: 226, responsables: "Encargado de convivencia, Dupla psicosocial, Inspectoría general" },
+    { anexo: "Parvularia N°4", grupo: "Educación Parvularia", titulo: "Accidentes de las y los párvulos", pagina: 238, responsables: "TENS, Inspectoría general" },
+    { anexo: "Parvularia N°5", grupo: "Educación Parvularia", titulo: "Respuesta general frente a desregulaciones emocionales y conductuales", pagina: 242, responsables: "Encargado de convivencia, Coordinadora PIE" },
+    { anexo: "Parvularia N°6", grupo: "Educación Parvularia", titulo: "Muda en niveles de transición", pagina: 248, responsables: "Educadoras de párvulos, Técnicos de educación parvularia" },
+    { anexo: "Parvularia N°7", grupo: "Educación Parvularia", titulo: "Salidas pedagógicas de los párvulos", pagina: 252, responsables: "Educadora de párvulos, Jefe de UTP, Inspectoría general" }
   ],
   /* Normativa con enlaces verificados en la Biblioteca del Congreso Nacional (BCN) */
   normativa: [
