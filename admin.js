@@ -62,12 +62,49 @@
 
   // ------------------------------ Pantallas ------------------------------
   function pintar() {
-    var tabs = [["stats", "Estadísticas", I.grafico], ["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios], ["docs", "Documentos y enlaces", I.archivo]];
+    var tabs = [["claves", "⚙ Configuración", I.candado], ["stats", "Estadísticas", I.grafico], ["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios], ["docs", "Documentos y enlaces", I.archivo]];
     var z = $("#zona");
     z.innerHTML = '<div class="pestanas">' + tabs.map(function (t) { return '<button class="pestana' + (t[0] === pestana ? " activa" : "") + '" data-p="' + t[0] + '">' + esc(t[1]) + "</button>"; }).join("") +
       '</div><div id="contenidoPanel"></div><p class="ayuda" style="font-size:.8rem;color:var(--texto-suave)">Los datos se guardan en su Google Drive: <a target="_blank" rel="noopener" href="' + esc(cat.hoja) + '">hoja de datos</a> · <a target="_blank" rel="noopener" href="' + esc(cat.carpeta) + '">carpeta de documentos</a>.</p>';
     z.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { pestana = b.getAttribute("data-p"); pintar(); }; });
-    ({ stats: pStats, info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs })[pestana]($("#contenidoPanel"));
+    ({ stats: pStats, info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs, claves: pClaves })[pestana]($("#contenidoPanel"));
+  }
+
+  // ------------------------------ Claves de IA (Groq) ------------------------------
+  function pClaves(c) {
+    c.innerHTML = '<div class="tarjeta"><p>Cargando claves…</p></div>';
+    api({ accion: "claves_listar" }).then(function (j) {
+      if (!j.ok) {
+        var viejo = /desconocida/i.test(j.error || "");
+        c.innerHTML = '<div class="tarjeta"><h2>' + I.candado + ' Configuración · Claves de IA</h2><div class="mensaje mal">' +
+          (viejo ? "Esta opción necesita el código nuevo del servidor. En Apps Script pegue el código actualizado (Codigo_CON_CLAVES_PRIVADO.txt), presione Guardar y luego Implementar → Gestionar implementaciones → ✏ → Nueva versión → Implementar. Después recargue esta página."
+            : esc(j.error)) + "</div></div>";
+        return;
+      }
+      var color = { "Disponible": "estado-visible", "Parcialmente agotada": "estado-medio", "Cuota diaria agotada": "estado-oculto", "No válida": "estado-oculto" };
+      var filas = (j.claves || []).map(function (k) {
+        return '<div class="fila-doc"><div class="t"><b>' + k.orden + ". " + esc(k.mascara) + "</b><small>" + esc(k.origen) + '</small></div><span class="' + (color[k.estado] || "estado-medio") + '">' + esc(k.estado) + "</span>" +
+          (k.origen === "Panel" ? '<button class="boton peligro" type="button" data-quitar="' + esc(k.id) + '">' + I.basura + " Quitar</button>" : "") + "</div>";
+      }).join("") || '<div class="mensaje mal">No hay claves configuradas.</div>';
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.candado + ' Configuración · Claves de IA (Groq)</h2>' +
+        '<p class="ayuda">Cada clave de Groq tiene su propio límite gratuito (por minuto y por día). Con varias claves, si una se satura o agota su cuota diaria, el asistente pasa automáticamente a la siguiente, sin esperar. Las claves se guardan solo en el servidor (Apps Script) y aquí se muestran ocultas.</p>' +
+        filas + '<div class="acciones-fila"><button class="boton sec" type="button" id="btnRefClaves">↻ Actualizar estado</button></div></div>' +
+        '<div class="tarjeta" id="agregarClave"><h2>' + I.mas + ' Agregar una nueva clave de API</h2><p class="ayuda">Créela en <b>console.groq.com → API Keys → Create API Key</b>, cópiela completa (empieza con <code>gsk_</code>) y péguela aquí. Se prueba antes de guardarla. Nunca la escriba en GitHub ni la comparta por chat.</p>' +
+        '<form id="fClave"><div class="campo"><label for="nuevaClave">Clave de Groq</label><input id="nuevaClave" type="password" autocomplete="off" placeholder="gsk_…" required></div>' +
+        '<button class="boton" type="submit">' + I.guardar + ' Probar y guardar clave</button></form><div id="msgClave"></div></div>';
+      $("#btnRefClaves").onclick = function () { pClaves(c); };
+      c.querySelectorAll("[data-quitar]").forEach(function (b) {
+        b.onclick = function () { if (confirm("¿Quitar esta clave del asistente?")) guardar({ accion: "claves_eliminar", id: b.getAttribute("data-quitar") }, c, function () { pClaves(c); }); };
+      });
+      $("#fClave").onsubmit = function (e) {
+        e.preventDefault(); var b = $("button", e.target); b.disabled = true; b.textContent = "Probando la clave…";
+        api({ accion: "claves_agregar", clave: $("#nuevaClave").value.trim() }).then(function (r) {
+          $("#nuevaClave").value = "";
+          if (r.ok) { toast("Clave guardada ✔", 3000); if (r.aviso) alert(r.aviso); pClaves(c); }
+          else { b.disabled = false; b.innerHTML = I.guardar + " Probar y guardar clave"; msg($("#msgClave"), "mal", r.error || "No se pudo guardar"); }
+        }).catch(function () { b.disabled = false; });
+      };
+    }).catch(function () { });
   }
 
   // ------------------------------ Estadísticas ------------------------------

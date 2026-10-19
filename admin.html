@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css">
+<link rel="stylesheet" href="estilos.css?v=1.10">
 <script>try{var t=localStorage.getItem('tema');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 <style>
   body{overflow-y:auto}
@@ -51,6 +51,7 @@
   .tabla-stats{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:.92rem}
   .tabla-stats th{background:var(--marino);color:#fff;text-align:left;padding:8px}
   .tabla-stats td{padding:7px 8px;border-top:1px solid var(--borde)}
+  .estado-medio{font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:99px;background:#fff3c4;color:#7a5c00}
   .contador{font-size:.88rem;color:var(--texto-suave);background:var(--superficie-2);border:1px solid var(--borde);border-radius:99px;padding:6px 12px}
   .plan-caja{margin-top:14px;padding:14px 16px;border-radius:14px;border:2px solid var(--amarillo);background:var(--superficie-2)}
   @media (max-width:640px){.rejilla,.cargo .rejilla{grid-template-columns:1fr}}
@@ -67,12 +68,12 @@
     </nav>
   </header>
   <div class="zona" id="zona"></div>
-  <p style="text-align:center;font-size:.72rem;color:var(--texto-suave);margin:0 0 14px">Diseñado por Leandro Bascuñán Valdebenito · © 2026</p>
+  <p class="firma-clara"><img src="firma-autor.png?v=1.10" alt="Creado por Leandro Bascuñán Valdebenito"><span>© 2026 · Panel v1.10</span></p>
 </div>
 <div id="aviso" class="toast" hidden></div>
-<script src="config.js"></script>
-<script src="datos.js"></script>
-<script src="conocimiento.js"></script>
-<script src="admin.js"></script>
+<script src="config.js?v=1.10"></script>
+<script src="datos.js?v=1.10"></script>
+<script src="conocimiento.js?v=1.10"></script>
+<script src="admin.js?v=1.10"></script>
 </body>
 </html>
