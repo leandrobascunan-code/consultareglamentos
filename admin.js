@@ -62,12 +62,13 @@
 
   // ------------------------------ Pantallas ------------------------------
   function pintar() {
-    var tabs = [["claves", "⚙ Configuración", I.candado], ["stats", "Estadísticas", I.grafico], ["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios], ["docs", "Documentos y enlaces", I.archivo]];
+    var tabs = [["claves", "⚙ Configuración", I.candado], ["stats", "Estadísticas", I.grafico], ["info", "Establecimiento", I.escuela], ["pei", "PEI", I.brujula], ["cargos", "Perfiles de cargo", I.usuarios],
+      ["rutinas", "Rutinas", I.archivo], ["equipo", "Equipo y correos", I.usuarios], ["protocolos", "Protocolos", I.archivo], ["docs", "Documentos y enlaces", I.archivo]];
     var z = $("#zona");
     z.innerHTML = '<div class="pestanas">' + tabs.map(function (t) { return '<button class="pestana' + (t[0] === pestana ? " activa" : "") + '" data-p="' + t[0] + '">' + esc(t[1]) + "</button>"; }).join("") +
       '</div><div id="contenidoPanel"></div><p class="ayuda" style="font-size:.8rem;color:var(--texto-suave)">Los datos se guardan en su Google Drive: <a target="_blank" rel="noopener" href="' + esc(cat.hoja) + '">hoja de datos</a> · <a target="_blank" rel="noopener" href="' + esc(cat.carpeta) + '">carpeta de documentos</a>.</p>';
     z.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { pestana = b.getAttribute("data-p"); pintar(); }; });
-    ({ stats: pStats, info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs, claves: pClaves })[pestana]($("#contenidoPanel"));
+    ({ stats: pStats, info: pInfo, pei: pPei, cargos: pCargos, docs: pDocs, claves: pClaves, rutinas: pRutinas, equipo: pEquipo, protocolos: pProtocolos })[pestana]($("#contenidoPanel"));
   }
 
   // ------------------------------ Claves de IA (Groq) ------------------------------
@@ -355,12 +356,131 @@
     }
     dibujar();
   }
+  // ------------------------- Rutinas, equipo y protocolos -------------------------
+  var RUTB = window.DATOS_RUTINAS || { rutinas: [], equipo: [], induccion: { secciones: [] } };
+  var PUBLICOS = ["Todos", "Docentes", "Asistentes de la educación", "Equipo directivo", "Reemplazantes", "Practicantes", "Apoderados", "Estudiantes"];
+  var CATS_RUT = ["Pedagógica", "Convivencia escolar", "Gestión administrativa", "Seguridad"];
+  function copia(x) { return JSON.parse(JSON.stringify(x || [])); }
+  function origen(lista) { return cat[lista] && (lista === "induccion" ? cat[lista].secciones : cat[lista].length) ? "editada en este panel" : "original del archivo"; }
+  function barraLista(lista, nombre) {
+    return '<div class="acciones-fila"><button class="boton sec" type="button" data-add>' + I.mas + " Agregar " + nombre + '</button><button class="boton" type="button" data-guardar>' + I.guardar + " Guardar cambios</button>" +
+      '<button class="boton sec" type="button" data-restaurar title="Vuelve a la versión original incluida en la app">Restaurar originales</button></div>' +
+      '<p class="ayuda" style="margin-top:8px">Versión en uso: <b>' + origen(lista) + "</b>. Los cambios se ven en el chat al recargar la app.</p>";
+  }
+  function enlazarBarra(c, lista, datos, redibujar, nuevo) {
+    $("[data-add]", c).onclick = function () { datos.push(nuevo()); redibujar(true); };
+    $("[data-guardar]", c).onclick = function () {
+      var malo = lista === "equipo" && datos.filter(function (p) { return p.correo && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(p.correo.trim()); })[0];
+      if (malo) { msg(c, "mal", "Revise el correo de «" + (malo.nombre || malo.cargo) + "»."); return; }
+      guardar({ accion: "guardar_lista", lista: lista, datos: datos }, c, function () { cat[lista] = copia(datos); redibujar(); });
+    };
+    $("[data-restaurar]", c).onclick = function () {
+      if (!confirm("¿Volver a la versión original? Se perderán los cambios hechos en el panel para esta sección.")) return;
+      guardar({ accion: "guardar_lista", lista: lista, datos: null }, c, function () { cat[lista] = null; pintar(); });
+    };
+  }
+  function mejorarRedaccion(boton, area) {
+    var t = area.value.trim(); if (!t) return;
+    boton.disabled = true; var antes = boton.innerHTML; boton.textContent = "Mejorando…";
+    api({ accion: "mejorar_texto", texto: t }).then(function (j) {
+      boton.disabled = false; boton.innerHTML = antes;
+      if (j.ok && j.texto) { area.dataset.anterior = t; area.value = j.texto; area.dispatchEvent(new Event("input")); toast("Redacción mejorada. Revísela y luego guarde. (Puede deshacer con el botón Deshacer)", 5000); }
+      else toast(j.error || "No se pudo mejorar el texto", 4000);
+    }).catch(function () { boton.disabled = false; boton.innerHTML = antes; });
+  }
+  function pRutinas(c) {
+    var datos = copia(cat.rutinas && cat.rutinas.length ? cat.rutinas : RUTB.rutinas);
+    var ind = JSON.parse(JSON.stringify(cat.induccion && cat.induccion.secciones ? cat.induccion : RUTB.induccion));
+    function dibujar(alFinal) {
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.archivo + ' Manual de Rutinas</h2><p class="ayuda">Edite la redacción, agregue rutinas nuevas o elimine las que no correspondan. En «Procedimiento» use una línea por paso que comience con «- » y **doble asterisco** para destacar. El botón <b>Mejorar redacción</b> usa la IA y no cambia el sentido.</p>' +
+        '<div id="listaRut"></div>' + barraLista("rutinas", "rutina") + "</div>" +
+        '<div class="tarjeta" id="tInd"><h2>' + I.usuarios + ' Inducción de profesores en formación (protocolo de prácticas)</h2><p class="ayuda">Una sección por bloque; en «Puntos», un punto por línea.</p><div id="listaInd"></div>' +
+        '<div class="acciones-fila"><button class="boton sec" type="button" id="addInd">' + I.mas + ' Agregar sección</button><button class="boton" type="button" id="gInd">' + I.guardar + ' Guardar inducción</button><button class="boton sec" type="button" id="rInd">Restaurar original</button></div></div>';
+      var cont = $("#listaRut");
+      datos.sort(function (a, b) { return (+a.n || 0) - (+b.n || 0); }).forEach(function (r, i) {
+        var d = document.createElement("details"); d.className = "cargo"; if (alFinal && i === datos.length - 1) d.open = true;
+        d.innerHTML = '<summary style="cursor:pointer;font-weight:800">Rutina ' + esc(r.n) + ": " + esc(r.titulo) + ' <small style="color:var(--texto-suave);font-weight:600">· ' + esc(r.categoria) + "</small></summary>" +
+          '<div class="rejilla" style="margin-top:10px"><div class="campo"><label>N°</label><input type="number" min="1" data-k="n" value="' + esc(r.n) + '"></div>' +
+          '<div class="campo"><label>Categoría</label><select data-k="categoria">' + CATS_RUT.map(function (x) { return "<option" + (x === r.categoria ? " selected" : "") + ">" + esc(x) + "</option>"; }).join("") + "</select></div></div>" +
+          '<div class="campo"><label>Título</label><input data-k="titulo" value="' + esc(r.titulo) + '"></div>' +
+          '<div class="campo"><label>Dirigida a</label><div style="display:flex;flex-wrap:wrap;gap:6px 14px">' + PUBLICOS.map(function (p) { return '<label style="font-weight:600"><input type="checkbox" data-pub="' + esc(p) + '"' + ((r.dirigida || []).indexOf(p) >= 0 ? " checked" : "") + "> " + esc(p) + "</label>"; }).join("") + "</div></div>" +
+          '<div class="campo"><label>Referente</label><input data-k="referente" value="' + esc(r.referente || "") + '"></div>' +
+          ["objetivo", "pasos", "inclusivo"].map(function (k) {
+            return '<div class="campo"><label>' + { objetivo: "Objetivo", pasos: "Procedimiento (un paso por línea)", inclusivo: "Foco inclusivo (opcional)" }[k] + '</label><textarea data-k="' + k + '" style="min-height:' + (k === "pasos" ? 220 : 70) + 'px">' + esc(r[k] || "") + "</textarea>" +
+              '<div class="acciones-fila"><button class="boton sec" type="button" data-mejorar="' + k + '">✨ Mejorar redacción</button><button class="boton sec" type="button" data-deshacer="' + k + '">Deshacer</button></div></div>';
+          }).join("") +
+          '<button class="boton peligro" type="button" data-quitar>' + I.basura + " Eliminar rutina</button>";
+        d.querySelectorAll("[data-k]").forEach(function (inp) { inp.oninput = inp.onchange = function () { var k = inp.getAttribute("data-k"); r[k] = k === "n" ? +inp.value : inp.value; }; });
+        d.querySelectorAll("[data-pub]").forEach(function (ch) { ch.onchange = function () { r.dirigida = [].slice.call(d.querySelectorAll("[data-pub]:checked")).map(function (x) { return x.getAttribute("data-pub"); }); }; });
+        d.querySelectorAll("[data-mejorar]").forEach(function (b) { b.onclick = function () { mejorarRedaccion(b, $('textarea[data-k="' + b.getAttribute("data-mejorar") + '"]', d)); }; });
+        d.querySelectorAll("[data-deshacer]").forEach(function (b) { b.onclick = function () { var a = $('textarea[data-k="' + b.getAttribute("data-deshacer") + '"]', d); if (a.dataset.anterior) { a.value = a.dataset.anterior; delete a.dataset.anterior; a.dispatchEvent(new Event("input")); } }; });
+        $("[data-quitar]", d).onclick = function () { if (confirm("¿Eliminar la Rutina " + r.n + "?")) { datos.splice(datos.indexOf(r), 1); dibujar(); } };
+        cont.appendChild(d);
+      });
+      enlazarBarra(c, "rutinas", datos, dibujar, function () { return { n: datos.reduce(function (m, x) { return Math.max(m, +x.n || 0); }, 0) + 1, categoria: CATS_RUT[0], titulo: "Nueva rutina", dirigida: ["Docentes"], referente: "", objetivo: "", pasos: "- ", inclusivo: "" }; });
+      // Inducción
+      var ci = $("#listaInd");
+      ind.secciones.forEach(function (s, i) {
+        var d = document.createElement("div"); d.className = "cargo";
+        d.innerHTML = '<div class="campo"><label>Sección ' + (i + 1) + '</label><input data-s="titulo" value="' + esc(s.titulo) + '"></div><div class="campo"><label>Puntos (uno por línea)</label><textarea data-s="puntos">' + esc((s.puntos || []).join("\n")) + "</textarea></div>" +
+          '<button class="boton peligro" type="button">' + I.basura + "</button>";
+        $('[data-s="titulo"]', d).oninput = function () { s.titulo = this.value; };
+        $('[data-s="puntos"]', d).oninput = function () { s.puntos = this.value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean); };
+        $(".peligro", d).onclick = function () { if (confirm("¿Eliminar esta sección?")) { ind.secciones.splice(i, 1); dibujar(); } };
+        ci.appendChild(d);
+      });
+      $("#addInd").onclick = function () { ind.secciones.push({ titulo: "Nueva sección", puntos: [] }); dibujar(); };
+      $("#gInd").onclick = function () { guardar({ accion: "guardar_lista", lista: "induccion", datos: ind }, $("#tInd"), function () { cat.induccion = JSON.parse(JSON.stringify(ind)); }); };
+      $("#rInd").onclick = function () { if (confirm("¿Volver a la inducción original?")) guardar({ accion: "guardar_lista", lista: "induccion", datos: null }, $("#tInd"), function () { cat.induccion = null; pintar(); }); };
+    }
+    dibujar();
+  }
+  function pEquipo(c) {
+    var datos = copia(cat.equipo && cat.equipo.length ? cat.equipo : RUTB.equipo);
+    function dibujar(alFinal) {
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.usuarios + ' Equipo del establecimiento</h2><p class="ayuda">En el chat solo se muestran quienes tienen correo. Use correos <b>institucionales</b>; no agregue teléfonos ni datos personales.</p><div id="listaEq"></div>' + barraLista("equipo", "persona") + "</div>";
+      var cont = $("#listaEq");
+      datos.forEach(function (p, i) {
+        var d = document.createElement("div"); d.className = "cargo";
+        d.innerHTML = '<div class="rejilla"><div class="campo"><label>Cargo</label><input data-k="cargo" value="' + esc(p.cargo) + '"></div><div class="campo"><label>Nombre</label><input data-k="nombre" value="' + esc(p.nombre) + '"></div>' +
+          '<div class="campo"><label>Correo institucional</label><input type="email" data-k="correo" value="' + esc(p.correo) + '" placeholder="nombre.apellido@andaliensur.cl"></div><div class="campo"><label>Área</label><input data-k="area" value="' + esc(p.area || "") + '"></div></div>' +
+          '<button class="boton peligro" type="button">' + I.basura + " Quitar</button>";
+        d.querySelectorAll("[data-k]").forEach(function (inp) { inp.oninput = function () { p[inp.getAttribute("data-k")] = inp.value.trim(); }; });
+        $(".peligro", d).onclick = function () { if (confirm("¿Quitar a «" + (p.nombre || p.cargo) + "»?")) { datos.splice(i, 1); dibujar(); } };
+        cont.appendChild(d);
+        if (alFinal && i === datos.length - 1) setTimeout(function () { d.scrollIntoView({ behavior: "smooth" }); $("input", d).focus(); }, 30);
+      });
+      enlazarBarra(c, "equipo", datos, dibujar, function () { return { cargo: "", nombre: "", correo: "", area: "" }; });
+    }
+    dibujar();
+  }
+  function pProtocolos(c) {
+    var datos = copia(cat.protocolos && cat.protocolos.length ? cat.protocolos : BASE.protocolos);
+    function dibujar(alFinal) {
+      c.innerHTML = '<div class="tarjeta"><h2>' + I.archivo + ' Protocolos de actuación</h2><p class="ayuda">Esta lista aparece en la Biblioteca y la IA la usa cuando preguntan por los protocolos. «Página» es la del RIE (deje 0 si el protocolo está en otro documento).</p><div id="listaProt"></div>' + barraLista("protocolos", "protocolo") + "</div>";
+      var cont = $("#listaProt");
+      datos.forEach(function (p, i) {
+        var d = document.createElement("div"); d.className = "cargo";
+        d.innerHTML = '<div class="rejilla"><div class="campo"><label>Código</label><input data-k="anexo" value="' + esc(p.anexo) + '" placeholder="Protocolo N°18"></div><div class="campo"><label>Grupo</label><select data-k="grupo">' +
+          ["General", "Educación Parvularia"].map(function (g) { return "<option" + (g === p.grupo ? " selected" : "") + ">" + g + "</option>"; }).join("") + "</select></div></div>" +
+          '<div class="campo"><label>Nombre del protocolo</label><input data-k="titulo" value="' + esc(p.titulo) + '"></div>' +
+          '<div class="rejilla"><div class="campo"><label>Página del RIE</label><input type="number" min="0" data-k="pagina" value="' + esc(p.pagina || 0) + '"></div><div class="campo"><label>Responsables</label><input data-k="responsables" value="' + esc(p.responsables) + '"></div></div>' +
+          '<button class="boton peligro" type="button">' + I.basura + " Eliminar</button>";
+        d.querySelectorAll("[data-k]").forEach(function (inp) { inp.oninput = inp.onchange = function () { var k = inp.getAttribute("data-k"); p[k] = k === "pagina" ? (+inp.value || 0) : inp.value; }; });
+        $(".peligro", d).onclick = function () { if (confirm("¿Eliminar «" + p.titulo + "»?")) { datos.splice(i, 1); dibujar(); } };
+        cont.appendChild(d);
+        if (alFinal && i === datos.length - 1) setTimeout(function () { d.scrollIntoView({ behavior: "smooth" }); }, 30);
+      });
+      enlazarBarra(c, "protocolos", datos, dibujar, function () { return { anexo: "Protocolo N°" + (datos.filter(function (x) { return x.grupo === "General" && /N°/.test(x.anexo); }).length + 1), grupo: "General", titulo: "", pagina: 0, responsables: "" }; });
+    }
+    dibujar();
+  }
   function pDocs(c) {
     var ocultos = cat.ocultos || [];
     var base = KB.documentos.map(function (d) {
-      var oc = ocultos.indexOf(d.id) >= 0;
+      var oc = ocultos.indexOf(d.clave || d.id) >= 0;   // la clave cambia con cada versión del documento
       return '<div class="fila-doc"><div class="t"><b>' + esc(d.titulo) + "</b><small>Incluido en la app · " + esc(d.archivo) + '</small></div><span class="' + (oc ? "estado-oculto" : "estado-visible") + '">' + (oc ? "Eliminado del chat" : "Visible") + "</span>" +
-        '<button class="boton ' + (oc ? "" : "peligro") + '" data-base="' + esc(d.id) + '" data-oc="' + (oc ? 0 : 1) + '">' + (oc ? I.ojo + " Restaurar" : I.basura + " Eliminar") + "</button></div>";
+        '<button class="boton ' + (oc ? "" : "peligro") + '" data-base="' + esc(d.clave || d.id) + '" data-oc="' + (oc ? 0 : 1) + '">' + (oc ? I.ojo + " Restaurar" : I.basura + " Eliminar") + "</button></div>";
     }).join("");
     var propios = (cat.documentos || []).map(function (d) {
       return '<div class="fila-doc"><div class="t"><b>' + esc(d.titulo) + "</b><small>" + esc(d.categoria || "") + " · " + (d.origen === "drive" ? "Archivo en Drive" : "Enlace") + "</small></div>" +

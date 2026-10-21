@@ -104,8 +104,80 @@
       documentos: c.documentos || [], ocultos: c.ocultos || []
     };
   }
-  function docsBaseVisibles() { var o = catalogoEfectivo().ocultos; return KB.documentos.filter(function (d) { return o.indexOf(d.id) < 0; }); }
+  function docsBaseVisibles() { var o = catalogoEfectivo().ocultos; return KB.documentos.filter(function (d) { return o.indexOf(d.clave || d.id) < 0; }); }
+  // Ocultar un documento base se guarda con su clave de versión (por ejemplo "rie-2026"): ocultar la versión anterior no oculta la nueva
+  function claveDoc(id) { var d = docBase(id); return d ? (d.clave || d.id) : id; }
   function docBase(id) { for (var i = 0; i < KB.documentos.length; i++) if (KB.documentos[i].id === id) return KB.documentos[i]; return null; }
+
+  // ---------- Manual de Rutinas, equipo del colegio e inducción de practicantes (editables en el Panel) ----------
+  var RUT = window.DATOS_RUTINAS || { rutinas: [], equipo: [], induccion: { titulo: "", secciones: [] }, contacto: {} };
+  var POR_DEFECTO = { protocolos: BASE.protocolos, rutinas: RUT.rutinas, equipo: RUT.equipo, induccion: RUT.induccion };
+  var ROL_REEMPLAZO = "Docente reemplazante", ROL_PRACTICA = "Estudiante en práctica";
+  function sinMarcas(s) { return String(s || "").replace(/\*\*([^*]+)\*\*/g, "$1"); }
+  function textoRutina(r) {
+    return "Rutina " + r.n + ": " + r.titulo + ". Dirigida a: " + (r.dirigida || []).join(", ") + ". Referente: " + (r.referente || "") + ". Objetivo: " + (r.objetivo || "") +
+      "\nProcedimiento:\n" + sinMarcas(r.pasos) + (r.inclusivo ? "\nFoco inclusivo: " + r.inclusivo : "");
+  }
+  function aplicarListas() {
+    var c = estado.catalogo || {};
+    BASE.protocolos = (c.protocolos && c.protocolos.length) ? c.protocolos : POR_DEFECTO.protocolos;
+    RUT.rutinas = (c.rutinas && c.rutinas.length) ? c.rutinas : POR_DEFECTO.rutinas;
+    RUT.equipo = (c.equipo && c.equipo.length) ? c.equipo : POR_DEFECTO.equipo;
+    RUT.induccion = (c.induccion && c.induccion.secciones && c.induccion.secciones.length) ? c.induccion : POR_DEFECTO.induccion;
+    // Las rutinas y la inducción también se buscan como fragmentos (para que la IA las use y las cite)
+    KB.fragmentos = KB.fragmentos.filter(function (f) { return f.d !== "rutinas" && f.d !== "induccion"; });
+    RUT.rutinas.forEach(function (r) {
+      var t = textoRutina(r), partes = [], actual = "";
+      t.split("\n").forEach(function (l) { if (actual && (actual + "\n" + l).length > 1300) { partes.push(actual); actual = "Rutina " + r.n + " (continuación): " + l; } else actual += (actual ? "\n" : "") + l; });
+      partes.push(actual);
+      partes.forEach(function (p) { KB.fragmentos.push({ d: "rutinas", p: r.n, s: "Rutina " + r.n + ": " + r.titulo, t: p }); });
+    });
+    (RUT.induccion.secciones || []).forEach(function (s, i) {
+      KB.fragmentos.push({ d: "induccion", p: i + 1, s: s.titulo, t: "Inducción de profesores en formación (estudiantes en práctica, practicantes). " + s.titulo + ": " + (s.puntos || []).join(" ") });
+    });
+    indice = null;
+  }
+  function rutinaPorNumero(n) { for (var i = 0; i < RUT.rutinas.length; i++) if (+RUT.rutinas[i].n === +n) return RUT.rutinas[i]; return null; }
+  function mdRutina(r) {
+    return "## Rutina " + r.n + ": " + r.titulo + "\n**Categoría:** " + r.categoria + " · **Dirigida a:** " + (r.dirigida || []).join(", ") +
+      (r.referente ? "\n\n**Referente:** " + r.referente : "") + (r.objetivo ? "\n\n**Objetivo:** " + r.objetivo : "") +
+      "\n\n### Procedimiento\n" + (r.pasos || "") + (r.inclusivo ? "\n\n### Foco inclusivo\n" + r.inclusivo : "") + "\n\n*Fuente: " + (RUT.fuente || "Manual de Rutinas") + "*";
+  }
+  function verRutina(r) {
+    if (!r) return;
+    abrirModal(ico("lista") + " Manual de Rutinas", '<div class="contenido">' + bloquesHTML(aBloques(mdRutina(r))) + "</div>",
+      [{ texto: "Preguntar a Timón", icono: "nuevo", fn: function () { cerrarModal(); enviarConsulta("¿Cómo aplico la Rutina " + r.n + " (" + r.titulo + ") del Manual de Rutinas?"); } },
+       { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
+  }
+  function mdInduccion() {
+    var ind = RUT.induccion || { secciones: [] };
+    return "## " + (ind.titulo || "Inducción Profesores en Formación") + "\n" + (ind.secciones || []).map(function (s, i) {
+      return "### " + (i + 1) + ". " + s.titulo + "\n" + (s.puntos || []).map(function (p) { return "- " + p; }).join("\n");
+    }).join("\n\n");
+  }
+  function verInduccion() {
+    abrirModal(ico("birrete") + " Protocolo de prácticas", '<div class="contenido">' + bloquesHTML(aBloques(mdInduccion())) + "</div>",
+      [{ texto: "Ver Rutina 16", icono: "lista", clase: "sec", fn: function () { verRutina(rutinaPorNumero(16)); } }, { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
+  }
+  function equipoVisible() { return (RUT.equipo || []).filter(function (p) { return p && p.correo; }); }
+  function equipoHTML(lista) {
+    lista = lista || equipoVisible();
+    if (!lista.length) return '<p class="nota-equipo">Aún no se han cargado los correos del equipo. El equipo directivo puede agregarlos en el Panel → Equipo.</p>';
+    return '<div class="equipo-lista">' + lista.map(function (p) {
+      var ini = String(p.nombre || p.cargo || "?").split(/\s+/).map(function (w) { return w.charAt(0); }).join("").slice(0, 2).toUpperCase();
+      return '<div class="persona"><div class="ini">' + esc(ini) + '</div><div class="datos"><b>' + esc(p.nombre || p.cargo) + "</b><span>" + esc(p.nombre ? p.cargo : (p.area || "")) + "</span>" +
+        '<code>' + esc(p.correo) + '</code></div><div class="acc"><button type="button" class="boton sec" data-copiar="' + esc(p.correo) + '">' + ico("copiar") + " Copiar correo</button>" +
+        '<a class="boton" href="mailto:' + esc(p.correo) + '">' + ico("correo") + " Escribir</a></div></div>";
+    }).join("") + "</div>" + (RUT.contacto && RUT.contacto.telefono ? '<p class="nota-equipo">' + esc(RUT.contacto.direccion || "") + " · Teléfono " + esc(RUT.contacto.telefono) + "</p>" : "");
+  }
+  function copiarTexto(t, aviso) {
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast(aviso || "Copiado"); }).catch(function () {
+      var ta = el("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); toast(aviso || "Copiado"); } catch (e) { toast("No se pudo copiar"); } ta.remove();
+    });
+  }
+  function activarCopiar(raiz) {
+    (raiz || document).querySelectorAll("[data-copiar]").forEach(function (b) { b.onclick = function () { copiarTexto(b.getAttribute("data-copiar"), "Correo copiado: pégalo en tu correo"); }; });
+  }
 
   // =====================================================================
   //  BÚSQUEDA LOCAL (BM25) sobre los documentos del establecimiento
@@ -165,7 +237,8 @@
     [/celular|tel[eé]fono m[oó]vil|redes sociales/i, "dispositivos telefono celular tecnologicos"],
     [/copi(a|ar|ando)|plagi|torpedo/i, "copia plagio suplantacion evaluacion"],
     [/cierre anticipado|terminar el a[nñ]o/i, "cierre anticipado ano escolar solicitud"],
-    [/atras(o|ada|ado)s?\b|llega(r)? tarde/i, "atrasos puntualidad ingreso jornada"]
+    [/atras(o|ada|ado)s?\b|llega(r)? tarde/i, "atrasos puntualidad ingreso jornada"],
+    [/\bca[yí](d[oa]|[oó])\b|se cay|se golpe[oó]|lesion[oó]|se hiri[oó]|accident|se fractur|se torci[oó]/i, "accidente accidentes escolar lesion seguro enfermeria protocolo"]
   ];
   var EVAL = /evaluaci|calific|nota|prueba|promoci|repit|examen|reevalu|eximi|adecuaci|asistencia/i;
   // Temas generales (solo se cuenta el tema, de forma anónima, para las estadísticas del panel)
@@ -178,6 +251,7 @@
     ["Evaluación y calificaciones", /evaluaci|calific|\bnotas?\b|prueba|examen|reevalu|eximi|r[uú]brica|instrumento|plagio|copia/i],
     ["Seguridad escolar, accidentes y salidas", /accidente|\bpise\b|evacuaci|sismo|incendio|salida|gira|emergencia|seguridad/i],
     ["Apoderados y comunicación", /apoderad|reuni[oó]n|comunicaci|entrevista|padres|familia/i],
+    ["Rutinas, reemplazos y prácticas", /rutina|reemplaz|suplente|practicante|pr[aá]ctica profesional|profesor(a)? en formaci|inducci[oó]n|libro de clases|leccionario|fotocopia|bit[aá]cora|profesor(a)? gu[ií]a/i],
     ["Normas generales (uniforme, horarios, celular)", /uniforme|presentaci[oó]n personal|celular|horario|atraso|puntualidad|recreo|comedor|laboratorio/i],
     ["PEI, misión y sellos", /\bpei\b|misi[oó]n|visi[oó]n|sello|valores/i]
   ];
@@ -190,6 +264,19 @@
   // Consultas donde conviene recordar derechos de los estudiantes (LGE arts. 10, 10 bis y 11)
   var RE_DERECHOS = /derecho|celular|tel[eé]fono|dispositivo|embaraz|maternidad|paternidad|matr[ií]cula|repit|discrimin|medicament|tdah|identidad de g[eé]nero|nombre social|religi|opini[oó]n|inclusi|\btea\b|autis|\bnee\b|\bpie\b|expuls|cancelaci|suspen|condicional|uniforme|corte de pelo|cabello|retir/i;
   var RE_DISCIPLINA = /falta|sanci[oó]n|sanciones|medida disciplin|suspen|expuls|cancelaci[oó]n de matr|condicionalidad|debido proceso|aula segura|anotaci/i;
+  // Conductas de convivencia que pueden ser falta (para clasificar leve, grave o gravísima)
+  var RE_CONDUCTA = /insult|ofend|garabat|groser|falta(s)? de respeto|irrespet|burl|agred|agresi|pelea|golpe|peg[oóaué]|pegar|empuj|bullying|acoso|amenaz|discrimin|da[nñ]|destroz|ray[oóa]|rob|hurt|fug|cimarra|escap|celular|tel[eé]fono|uniforme|presentaci[oó]n personal|atras|cigarr|vape|fum|droga|alcohol|arma|cuchillo|copi(a|ar|ó|o)|plagi|suplant|falsific|adulter|grab[oóa]|foto|video|redes sociales|desobedec|interrump|disrupt|conducta/i;
+  // Evaluación que NO es falta (salvo copiar, plagiar, suplantar o adulterar)
+  var RE_EVAL_FALTA = /copi(a|ar|ó|o|aron|ando)|plagi|suplant|falsific|adulter|torpedo|filtr[oóa] (la )?prueba|rob[oóa] (la )?prueba/i;
+  // Preguntas propias del Manual de Rutinas (en ellas las rutinas tienen prioridad; en el resto, a lo más una)
+  var RE_RUTINA = /rutina|manual de rutinas|reemplaz|suplente|pr[aá]ctica|practicante|en formaci[oó]n|profesor(a)? gu[ií]a|mentor|libro de clases|leccionario|fotocopia|recursos pedag|cierre de clase|inicio de clase|iniciar (la|una) clase|cerrar (la|una) clase|ticket de salida|co-?docencia|transici[oó]n|manejo de aula|clima de aula|comunicaci[oó]n interna|correo institucional|whatsapp|bit[aá]cora|delantal|primer d[ií]a|llegar al colegio|visitas?\b|porter[ií]a|ingreso tard[ií]o|pase de ingreso/i;
+  function clasificaFalta(t) {
+    var conducta = RE_CONDUCTA.test(t) || RE_DISCIPLINA.test(t) || RE_DELITO.test(t);
+    if (!conducta) return false;
+    // Faltar a una prueba, notas o promoción no son faltas de convivencia
+    if ((EVAL.test(t) || esAusenciaEvaluacion(t)) && !RE_EVAL_FALTA.test(t) && !/insult|agred|agresi|pelea|golpe|amenaz|bullying|acoso|rob|da[nñ]|sanci|anotaci|disciplin/i.test(t)) return false;
+    return true;
+  }
   function buscar(consulta, k) {
     if (!indice) construirIndice();
     var extra = INTENCIONES.filter(function (r) { return r[0].test(consulta); }).map(function (r) { return r[1]; }).join(" ");
@@ -198,7 +285,7 @@
     var ocultos = catalogoEfectivo().ocultos, k1 = 1.3, b = 0.72, res = [];
     var qset = {}; q.forEach(function (w) { qset[w] = (qset[w] || 0) + 1; });
     indice.docs.forEach(function (d) {
-      var f = KB.fragmentos[d.i]; if (ocultos.indexOf(f.d) >= 0) return;
+      var f = KB.fragmentos[d.i]; if (ocultos.indexOf(claveDoc(f.d)) >= 0) return;
       var s = 0;
       Object.keys(qset).forEach(function (w) {
         var tf = d.tf[w]; if (!tf) return;
@@ -206,14 +293,26 @@
         s += qset[w] * idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * d.len / indice.prom));
       });
       if (esEval && f.d === "rep2026") s *= 1.6;
+      if (f.d === "induccion" && estado.perfil.rol !== ROL_PRACTICA && !/pr[aá]ctica|practicante|formaci[oó]n|delantal|profesor(a)? gu[ií]a|mentor/i.test(consulta)) return;
+      if (f.p >= 180 && f.d === "rie" && !/p[aá]rvul|parvularia|kinder|kínder|pre-?k|transici[oó]n|nt[12]\b|sala cuna|nivel medio|educadora/i.test(consulta)) s *= 0.55;
+      if (f.d === "rutinas" || f.d === "induccion") {
+        if (RE_RUTINA.test(consulta)) s *= 1.5;
+        if (estado.perfil.rol === ROL_REEMPLAZO || estado.perfil.rol === ROL_PRACTICA) s *= 1.3;
+        if (f.d === "induccion" && (estado.perfil.rol === ROL_PRACTICA || /pr[aá]ctica|practicante|formaci[oó]n/i.test(consulta))) s *= 1.6;
+      }
       if (s > 0) res.push({ f: f, puntaje: s });
     });
     res.sort(function (a, b2) { return b2.puntaje - a.puntaje; });
+    // Las rutinas complementan, no desplazan, al reglamento: máximo 1 (o 3 si la pregunta es de rutinas o el perfil es reemplazante/practicante)
+    var maxRut = RE_RUTINA.test(consulta) ? 3 : (estado.perfil.rol === ROL_REEMPLAZO || estado.perfil.rol === ROL_PRACTICA) ? 2 : 1, nRut = 0;
+    res = res.filter(function (x) { if (x.f.d !== "rutinas" && x.f.d !== "induccion") return true; return ++nRut <= maxRut; });
     return res.slice(0, k || 5);
   }
   function etiquetaFuente(f) {
     var d = docBase(f.d) || { corto: f.d };
     if (f.d === "rie") return "Reglamento Interno Escolar 2026, p. " + f.p + (f.s ? " · " + f.s : "");
+    if (f.d === "rutinas") return "Manual de Rutinas · " + f.s;
+    if (f.d === "induccion") return "Inducción Profesores en Formación 2026 · " + f.s;
     return d.corto + (f.s ? " · " + f.s : "");
   }
   function extracto(texto, consulta, max) {
@@ -288,6 +387,8 @@
   //  PERFIL (rol y cargo) – dura solo esta conversación
   // =====================================================================
   var PATRONES_CARGO = [
+    [/\b(reemplaz\w*|suplente)\b/i, "Docente reemplazante", ""],
+    [/\b(practicante|en pr[aá]ctica|profesor[a]? en formaci[oó]n|estudiante de pedagog[ií]a|pr[aá]ctica profesional|pr[aá]ctica progresiva)\b/i, "Estudiante en práctica", ""],
     [/\b(apoderad[oa]|mam[aá]|pap[aá]|madre|padre|tutor[a]?)\b/i, "Apoderado/a", ""],
     [/\b(alumn[oa]|estudiante)\b|\bsoy de \d/i, "Estudiante", ""],
     [/\b(jef[ae]s?\s+(de\s+)?(la\s+)?utp|utp|jef[ae]\s+t[eé]cnic|unidad t[eé]cnica)/i, "Equipo directivo y de gestión", "Jefe/a de UTP"],
@@ -339,8 +440,10 @@
     "Docente": ["¿Qué hago si un estudiante falta a una prueba?", "¿Cuántas calificaciones debo registrar por semestre?", "¿Cuándo debo reevaluar a todo el curso?", "¿Cómo actúo ante una agresión en la sala?"],
     "Equipo directivo y de gestión": ["¿Cómo funciona la promoción con asistencia menor a 85%?", "¿Qué pasos tiene el debido proceso ante una falta gravísima?", "Resume el protocolo de vulneración de derechos", "¿Cómo se solicita el cierre anticipado del año escolar?"],
     "Asistente de la educación": ["¿Qué hago si presencio una pelea en el recreo?", "¿Cómo actuar ante un accidente escolar?", "¿Qué hacer ante una desregulación emocional?", "¿Cómo se administran medicamentos a estudiantes?"],
-    "Apoderado/a": ["¿Cómo justifico una inasistencia de mi hijo/a?", "¿Qué hago si mi hijo/a sufre acoso escolar?", "¿Qué se necesita para ser promovido de curso?", "¿Cómo solicito una entrevista con el profesor/a jefe?"],
-    "Estudiante": ["¿Qué pasa si falto a una prueba?", "¿Puedo usar el celular en clases?", "¿Qué hago si me están molestando?", "¿Con qué nota apruebo una asignatura?"],
+    "Docente reemplazante": ["¿Qué debo hacer al llegar a mi primer día de reemplazo?", "¿Cómo inicio y cierro una clase según las rutinas del colegio?", "¿Qué hago ante una conducta disruptiva en la sala?", "¿Cómo completo el libro de clases?"],
+    "Estudiante en práctica": ["¿Qué normas debo cumplir como profesor/a en formación?", "¿Cómo es la inducción de mi práctica?", "¿Qué hago si tengo un conflicto con un estudiante?", "¿Qué rutinas debo aplicar en el aula?"],
+    "Apoderado/a": ["¿Cómo justifico una inasistencia de mi hijo/a?", "¿Qué hago si mi hijo/a sufre acoso escolar?", "¿Qué pasa si mi hijo/a llega atrasado/a?", "¿Cómo ingreso al colegio para una entrevista?"],
+    "Estudiante": ["¿Qué pasa si falto a una prueba?", "¿Puedo usar el celular en clases?", "¿Qué hago si me están molestando?", "¿Qué pasa si llego atrasado/a?"],
     "": ["¿Qué dice el reglamento sobre el uso de celulares?", "¿Cuáles son las faltas gravísimas?", "¿Cómo se calcula el promedio anual?", "¿Qué hacer ante un caso de ciberacoso?"]
   };
 
@@ -431,6 +534,39 @@
     var sug = SUGERENCIAS[p.rol] || SUGERENCIAS[""];
     $(".contenido", m).appendChild(chips(sug, function (v) { enviarConsulta(v); }, { multiple: true }));
     hablar(m);
+    if (p.rol === ROL_REEMPLAZO || p.rol === ROL_PRACTICA) setTimeout(function () { bienvenidaEspecial(p.rol); }, 400);
+  }
+  // Resumen de bienvenida para docentes reemplazantes y estudiantes en práctica
+  function bienvenidaEspecial(rol) {
+    var md = [];
+    var r17 = rutinaPorNumero(17), r16 = rutinaPorNumero(16);
+    if (rol === ROL_REEMPLAZO) {
+      md.push("## Bienvenido/a: lo esencial para tu reemplazo");
+      md.push("### Tu primer día (Manual de Rutinas, Rutina 17)");
+      if (r17) md.push(r17.pasos);
+      md.push("### Rutinas que aplicarás en la sala");
+      md.push(RUT.rutinas.filter(function (r) { return (r.dirigida || []).indexOf("Reemplazantes") >= 0 && r.n !== 17; }).map(function (r) { return "- **Rutina " + r.n + ":** " + r.titulo; }).join("\n"));
+      md.push("### Si ocurre una situación compleja");
+      md.push("- No la resuelvas solo/a: informa de inmediato a **Inspectoría General** o **Convivencia Escolar**.\n- Ante agresión, acoso, vulneración de derechos, desregulación o accidente, se activa el **protocolo del RIE 2026** que corresponda (revisa la pestaña Protocolos de la Biblioteca).\n- Resguarda siempre la privacidad de los estudiantes.");
+    } else {
+      md.push("## Bienvenido/a a tu práctica en el colegio");
+      md.push("### Cómo es tu inducción (Manual de Rutinas, Rutina 16)");
+      if (r16) md.push(r16.pasos);
+      md.push("### Normas para profesores en formación");
+      md.push((RUT.induccion.secciones || []).map(function (s) { return "- **" + s.titulo + ":** " + (s.puntos || [])[0]; }).join("\n"));
+      md.push("### Rutinas que conviene dominar");
+      md.push(RUT.rutinas.filter(function (r) { return (r.dirigida || []).indexOf("Practicantes") >= 0 && r.n !== 16; }).map(function (r) { return "- **Rutina " + r.n + ":** " + r.titulo; }).join("\n"));
+    }
+    md.push("### Equipo del establecimiento");
+    var m = msgIA(bloquesHTML(aBloques(md.join("\n\n"))) + equipoHTML() +
+      '<div class="acciones-resumen"><button type="button" class="boton" data-ver="rutinas">' + ico("lista") + " Ver todas las rutinas</button>" +
+      (rol === ROL_PRACTICA ? '<button type="button" class="boton sec" data-ver="induccion">' + ico("birrete") + " Protocolo de prácticas</button>" : "") +
+      '<button type="button" class="boton sec" data-ver="protocolos">' + ico("escudo") + " Protocolos del RIE</button></div>", { sinBajar: true });
+    activarCopiar(m); irA(m);
+    m.querySelectorAll("[data-ver]").forEach(function (b) {
+      b.onclick = function () { var v = b.getAttribute("data-ver"); if (v === "induccion") verInduccion(); else biblioteca(v); };
+    });
+    hablar(m, 2500);
   }
 
   // =====================================================================
@@ -692,6 +828,7 @@
     }
     if (!frags.length) frags = buscar(consultaBusqueda.replace(/[¿?¡!.,;:]/g, " ").split(/\s+/).filter(function (w) { return w.length > 4; }).join(" "), 5);
     var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
+    var nivelF = clasificaFalta(consultaBusqueda);
     var disciplinario = delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
     function agregarNorma(id) {
@@ -724,7 +861,7 @@
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
       historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
-      protocolos: pideProtocolos(consultaBusqueda),
+      protocolos: pideProtocolos(consultaBusqueda), nivelFalta: nivelF,
       fragmentos: indiceProtocolos(consultaBusqueda).concat(frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; })).slice(0, 6),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
@@ -734,7 +871,7 @@
       clearInterval(relojEspera); estado.ocupado = false; $("#btnEnviar").disabled = false; pensando.remove();
       estado.mensajes.push({ role: "user", content: texto });
       if (!local) estado.mensajes.push({ role: "assistant", content: resp.texto });
-      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
+      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, nivelFalta: nivelF, delito: delito, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
         servidor: (resp.fuentesServidor || []).filter(function (s) { return s && s.titulo && new RegExp("\\[S\\d\\]|" + String(s.titulo).slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(resp.texto); }) });
     };
     // Estadística anónima (tema y rol) en paralelo: no retrasa la respuesta
@@ -838,6 +975,21 @@
     }).join("").replace(/(<strong>)(Nivel de la falta:)/g, '<strong class="nivel-falta">$2');
   }
 
+  // ---------- Posible delito: sección destacada en rojo, con ícono y aviso de denuncia ----------
+  function marcarDelito(cont, r) {
+    var h = [].slice.call(cont.querySelectorAll("h2,h3")).filter(function (x) { return /constitutivo de delito|posible delito|\bdelito\b/i.test(x.textContent); })[0];
+    if (!h) return;
+    var caja = el("div", "seccion-delito"), sig = h.nextElementSibling;
+    h.parentNode.insertBefore(caja, h); caja.appendChild(h);
+    while (sig && !/^H[23]$/.test(sig.tagName)) { var n = sig.nextElementSibling; caja.appendChild(sig); sig = n; }
+    var texto = caja.textContent.replace(h.textContent, "").trim();
+    var noEs = /^(no|claramente no)\b[^.]{0,80}\b(es|constituye|configura|parece)\b[^.]{0,30}delito/i.test(texto) || /^no (es|constituye) (un )?delito/i.test(texto);
+    if (noEs) { caja.classList.add("no-delito"); return; }
+    caja.insertAdjacentHTML("afterbegin", '<div class="sello-delito" role="alert">' + ico("alerta") + "<div><b>POSIBLE DELITO</b><span>Denuncia obligatoria dentro de 24 horas (Código Procesal Penal, arts. 175-177). Activa además el protocolo del RIE.</span></div></div>");
+    // Aviso también al inicio de la respuesta
+    cont.insertAdjacentHTML("afterbegin", '<p class="aviso-delito">' + ico("alerta") + " <b>Atención: el hecho podría constituir delito.</b> Revisa la sección destacada en rojo.</p>");
+  }
+
   // ---------- Pintar una respuesta completa ----------
   function mostrarRespuesta(r) {
     r.texto = String(r.texto || "").replace(/\bRIE\s+20(2[0-57-9]|3\d)\b/g, "RIE 2026");   // el Reglamento Interno vigente es el 2026
@@ -853,8 +1005,14 @@
     var tieneExternas = /fuentes externas sugeridas/i.test(r.texto);
     r.externas = tieneExternas ? [] : fuentesPara(r.busqueda || r.consulta, 3);
     var m = msgIA("", { sinBajar: true }), cont = $(".contenido", m);
-    var html = (r.local ? '<span class="etiqueta-local">' + ico("archivo") + " Modo sin conexión · base local</span>" : "") + colorearFaltas(bloquesHTML(bl));
+    var html = (r.local ? '<span class="etiqueta-local">' + ico("archivo") + " Modo sin conexión · base local</span>" : "") + (r.nivelFalta ? colorearFaltas(bloquesHTML(bl)) : bloquesHTML(bl));
     cont.innerHTML = html;
+    marcarDelito(cont, r);
+    // Si pregunta a quién contactar o por el equipo, se muestran los correos (la IA no los inventa)
+    if (/correo|contact|equipo (del|directivo)|qui[eé]n(es)? (es|son|est[aá]) (el|la|los|las|a cargo)|director[a]?\b|jef[ae] de utp|a qui[eé]n (le )?(escribo|aviso|informo|acudo)/i.test(r.busqueda || r.consulta) && equipoVisible().length) {
+      cont.insertAdjacentHTML("beforeend", '<h3><span class="ico-titulo" style="background:#0E7C86">' + ico("usuarios") + "</span>Equipo del establecimiento</h3>" + equipoHTML());
+      activarCopiar(cont);
+    }
     if (r.aviso) cont.insertAdjacentHTML("afterbegin", '<p class="etiqueta-local">' + ico("alerta") + " " + esc(r.aviso) + "</p>");
     bl.forEach(function (b, k) { if (b.t === "graf") { var h = cont.querySelector('.grafico-hueco[data-i="' + k + '"]'); if (h) dibujarGrafico(h, b.d, r.graficos); } });
     bl.forEach(function (b) { if (b.t === "opc") pintarOpciones(cont, b.d); });
@@ -1168,13 +1326,15 @@
     if (frag) setTimeout(function () { var mk = $("#marcaFrag"); if (mk) mk.scrollIntoView({ block: "center" }); }, 60);
   }
   function abrirFragmento(f) {
+    if (f.d === "rutinas") return verRutina(rutinaPorNumero(f.p));
+    if (f.d === "induccion") return verInduccion();
     var d = docBase(f.d); if (!d) return;
     if (d.tipo === "pdf") abrirDocumento(d, f.p); else abrirTextoDoc(d, f);
   }
   function biblioteca(pest) {
     pest = pest || "colegio";
     var cat = catalogoEfectivo();
-    var tabs = [["colegio", "Del establecimiento"], ["protocolos", "Protocolos"], ["normativa", "Normativa"], ["sitios", "Sitios oficiales"], ["pei", "PEI e información"]];
+    var tabs = [["colegio", "Del establecimiento"], ["protocolos", "Protocolos"], ["rutinas", "Rutinas"], ["equipo", "Equipo y correos"], ["normativa", "Normativa"], ["sitios", "Sitios oficiales"], ["pei", "PEI e información"]];
     var html = '<div class="pestanas">' + tabs.map(function (t) { return '<button class="pestana' + (t[0] === pest ? " activa" : "") + '" data-p="' + t[0] + '">' + esc(t[1]) + "</button>"; }).join("") + "</div>";
     function tarjeta(tipo, color, titulo, desc, botones) {
       return '<div class="doc"><div class="tipo" style="background:' + color + '">' + esc(tipo) + "</div><div><h3>" + esc(titulo) + "</h3>" + (desc ? "<p>" + esc(desc) + "</p>" : "") + '<div class="bot">' + botones + "</div></div></div>";
@@ -1205,6 +1365,20 @@
           '<button class="boton sec" type="button" data-preg="' + k + '">' + ico("nuevo") + " Preguntar</button>");
       });
       html += "</div>";
+    } else if (pest === "rutinas") {
+      html += '<p style="margin:0 0 10px;color:var(--texto-suave)">' + esc(RUT.fuente || "Manual de Rutinas") + ". Sirven a toda la comunidad: funcionarios, reemplazantes, practicantes, apoderados y estudiantes. Toca <b>Ver</b> para leer el procedimiento completo.</p>" +
+        '<div class="filtro-rutinas">' + ["Todos", "Docentes", "Asistentes de la educación", "Reemplazantes", "Practicantes", "Apoderados", "Estudiantes"].map(function (x, k) { return '<button type="button" class="chip' + (k === 0 ? " marcado" : "") + '" data-fr="' + esc(x) + '">' + esc(x) + "</button>"; }).join("") + "</div>";
+      var porCatR = {}; RUT.rutinas.forEach(function (r, k) { (porCatR[r.categoria] = porCatR[r.categoria] || []).push(k); });
+      Object.keys(porCatR).forEach(function (c) {
+        html += '<h3 class="cat-titulo">' + ico("lista") + "Rutinas " + esc(c.toLowerCase()) + '</h3><div class="doc-lista">' + porCatR[c].map(function (k) {
+          var r = RUT.rutinas[k];
+          return '<div data-dirigida="' + esc((r.dirigida || []).join("|")) + '">' + tarjeta("R" + r.n, c === "Seguridad" ? "#D64545" : c === "Convivencia escolar" ? "#E67E22" : c === "Pedagógica" ? "#1E4FA3" : "#0E7C86", r.titulo, "Dirigida a: " + (r.dirigida || []).join(", "),
+            '<button class="boton" type="button" data-rut="' + k + '">' + ico("ojo") + " Ver</button>" + '<button class="boton sec" type="button" data-rutp="' + k + '">' + ico("nuevo") + " Preguntar</button>") + "</div>";
+        }).join("") + "</div>";
+      });
+      html += '<h3 class="cat-titulo">' + ico("birrete") + 'Profesores en formación</h3><div class="doc-lista">' + tarjeta("PRAC", "#7E57C2", (RUT.induccion && RUT.induccion.titulo) || "Inducción Profesores en Formación", "Protocolo de prácticas: normas de convivencia esperadas para estudiantes en práctica.", '<button class="boton" type="button" id="verInduccion">' + ico("ojo") + " Ver</button>") + "</div>";
+    } else if (pest === "equipo") {
+      html += '<p style="margin:0 0 10px;color:var(--texto-suave)">Toca <b>Copiar correo</b> y pégalo en tu correo, o <b>Escribir</b> para abrir tu aplicación de correo.</p>' + equipoHTML();
     } else if (pest === "normativa") {
       var porCat = {}; BASE.normativa.forEach(function (n) { (porCat[n.categoria] = porCat[n.categoria] || []).push(n); });
       Object.keys(porCat).forEach(function (c) {
@@ -1226,6 +1400,17 @@
     abrirModal(ico("libro") + " Biblioteca", html, [{ texto: "Panel de administración", icono: "usuario", clase: "sec", fn: function () { location.href = "admin.html"; } }, { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
     document.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { biblioteca(b.getAttribute("data-p")); }; });
     document.querySelectorAll("[data-ver]").forEach(function (b) { b.onclick = function () { abrirDocumento(acciones[+b.getAttribute("data-ver")]); }; });
+    document.querySelectorAll("[data-rut]").forEach(function (b) { b.onclick = function () { verRutina(RUT.rutinas[+b.getAttribute("data-rut")]); }; });
+    document.querySelectorAll("[data-rutp]").forEach(function (b) { b.onclick = function () { var r = RUT.rutinas[+b.getAttribute("data-rutp")]; cerrarModal(); enviarConsulta("¿Cómo aplico la Rutina " + r.n + " (" + r.titulo + ") del Manual de Rutinas?"); }; });
+    var vi = document.getElementById("verInduccion"); if (vi) vi.onclick = verInduccion;
+    activarCopiar(document.querySelector(".modal") || document);
+    document.querySelectorAll("[data-fr]").forEach(function (b) {
+      b.onclick = function () {
+        var v = b.getAttribute("data-fr");
+        document.querySelectorAll("[data-fr]").forEach(function (x) { x.classList.toggle("marcado", x === b); });
+        document.querySelectorAll("[data-dirigida]").forEach(function (d) { var l = d.getAttribute("data-dirigida").split("|"); d.hidden = !(v === "Todos" || l.indexOf(v) >= 0 || l.indexOf("Todos") >= 0); });
+      };
+    });
     document.querySelectorAll("[data-proto]").forEach(function (b) {
       b.onclick = function () {
         var p = BASE.protocolos[+b.getAttribute("data-proto")];
@@ -1258,9 +1443,10 @@
   }
   function cargarCatalogo() {
     try { var c = localStorage.getItem("catalogo"); if (c) estado.catalogo = JSON.parse(c); } catch (e) { }
+    aplicarListas();
     if (!URL_SERVIDOR) { marcarEstado("local"); return Promise.resolve(); }
     return fetch(URL_SERVIDOR + "?accion=catalogo", { redirect: "follow" }).then(function (r) { return r.json(); }).then(function (j) {
-      if (j && j.ok) { estado.catalogo = j.catalogo; try { localStorage.setItem("catalogo", JSON.stringify(j.catalogo)); } catch (e) { } marcarEstado(j.ia ? "ok" : "local"); indice = null; }
+      if (j && j.ok) { estado.catalogo = j.catalogo; try { localStorage.setItem("catalogo", JSON.stringify(j.catalogo)); } catch (e) { } marcarEstado(j.ia ? "ok" : "local"); aplicarListas(); }
       else marcarEstado("local");
     }).catch(function () { marcarEstado("local"); });
   }

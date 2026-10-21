@@ -2,9 +2,9 @@
    Con internet SIEMPRE descarga la versión más nueva de los archivos (así los cambios subidos a GitHub
    se ven de inmediato); la copia guardada se usa solo cuando no hay conexión.
    Si cambia archivos en GitHub, puede subir este número (v1.9.1, v1.9.2…). */
-var VERSION = "timon-v1.13.0";
+var VERSION = "timon-v1.14.0";
 var BASICOS = [
-  "./", "index.html", "estilos.css", "app.js", "config.js", "datos.js", "conocimiento.js", "manifest.json",
+  "./", "index.html", "estilos.css", "app.js", "config.js", "datos.js", "rutinas.js", "conocimiento.js", "manifest.json",
   "logo.png", "estudiante.png", "estudiante-cuerpo.png", "brazo-izq.png", "brazo-der.png", "firma-autor-blanco.png",
   "favicon.png", "icono-192.png", "icono-512.png", "icono-maskable-512.png", "apple-touch-icon.png"
 ];

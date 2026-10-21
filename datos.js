@@ -22,9 +22,11 @@ window.DATOS_BASE = {
     historia: "",
     fuente: "Reglamento Interno Escolar 2026, Artículo 6 (p. 12). El PEI completo puede cargarse desde el Panel."
   },
-  roles: ["Docente", "Equipo directivo y de gestión", "Asistente de la educación", "Apoderado/a", "Estudiante"],
+  roles: ["Docente", "Docente reemplazante", "Equipo directivo y de gestión", "Asistente de la educación", "Estudiante en práctica", "Apoderado/a", "Estudiante"],
   /* Cómo debe responder la IA según el rol (se envía junto a la consulta) */
   guiaRoles: {
+    "Docente reemplazante": "Es un/a docente que llega a reemplazar a un titular y aún no conoce el colegio. Explícale de forma práctica y ordenada qué hacer (Rutina 17 del Manual de Rutinas: llegada, UTP, presentación al curso, bitácora), qué rutinas aplicar en la sala, qué protocolo del RIE activar y a quién informar (UTP, Inspectoría General, Convivencia Escolar). Cita el Manual de Rutinas por número de rutina.",
+    "Estudiante en práctica": "Es un/a profesor/a en formación (estudiante en práctica). Orienta según la Inducción de Profesores en Formación 2026 y la Rutina 16 del Manual de Rutinas: seguir siempre a su profesor/a guía, no resolver por su cuenta situaciones disciplinarias e informar de inmediato a su profesor/a guía, usar delantal, lenguaje formal, celular solo en emergencias, y respetar la confidencialidad. Indica qué rutinas aplicar en el aula.",
     "Apoderado/a": "Es madre, padre o apoderado/a. Usa lenguaje claro y cordial. Explica sus derechos y deberes según el RIE, a quién acudir siguiendo el conducto regular (profesor/a jefe, Inspectoría General, Convivencia Escolar, UTP, Dirección), qué plazos tiene y cómo presentar solicitudes, justificaciones o apelaciones por escrito. No le indiques procedimientos internos que corresponden solo al personal.",
     "Estudiante": "Es un/a estudiante. Háblale de tú, con frases cortas, lenguaje simple, cercano y respetuoso. Explica sus derechos y deberes, qué indica el reglamento y a qué adulto de confianza o profesional del colegio puede acudir. Si relata una situación de riesgo, abuso, acoso o daño, anímalo/a a contarlo de inmediato a un adulto de confianza o a Convivencia Escolar."
   },
