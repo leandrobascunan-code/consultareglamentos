@@ -608,12 +608,19 @@
   // ---------- Organigrama (RIE 2026, Art. 7, p. 14) ----------
   function organigramaHTML() {
     var o = BASE.organigrama; if (!o) return "";
-    return '<div class="organigrama" role="img" aria-label="Organigrama del colegio"><div class="org-cima"><div class="org-nodo org-dir">' + esc(o.cabeza) + '</div><div class="org-nodo org-apoyo">' + esc(o.apoyo) + "</div></div>" +
-      '<div class="org-areas">' + o.areas.map(function (a) {
-        return '<div class="org-area"><div class="org-nodo org-n2">' + esc(a.nombre) + '</div><p class="org-tarea">' + esc(a.tarea) + "</p>" +
-          '<div class="org-chips">' + a.equipos.map(function (x) { return '<span class="org-chip verde">' + esc(x) + "</span>"; }).join("") + "</div>" +
-          (a.base.length ? '<div class="org-chips">' + a.base.map(function (x) { return '<span class="org-chip celeste">' + esc(x) + "</span>"; }).join("") + "</div>" : "") + "</div>";
-      }).join("") + '</div><p class="org-fuente">Fuente: ' + esc(o.fuente) + "</p></div>";
+    var ICO_AREA = [["birrete", "#E8833A"], ["usuarios", "#D9822B"], ["escudo", "#C9702A"]];
+    return '<div class="organigrama" aria-label="Organigrama del colegio">' +
+      '<div class="org-cima"><div class="org-dir"><i>' + ico("usuario") + '</i><div><small>Dirección</small><b>' + esc(o.cabeza) + "</b></div></div>" +
+      '<div class="org-apoyo"><i>' + ico("archivo") + "</i>" + esc(o.apoyo) + "<small>apoyo a Dirección</small></div></div>" +
+      '<div class="org-areas">' + o.areas.map(function (a, k) {
+        var ic = ICO_AREA[k % 3];
+        return '<div class="org-area"><div class="org-cab" style="--c:' + ic[1] + '"><i>' + ico(ic[0]) + "</i><b>" + esc(a.nombre) + "</b></div>" +
+          '<p class="org-tarea">' + esc(a.tarea) + "</p>" +
+          '<ul class="org-equipos">' + a.equipos.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" +
+          (a.base.length ? '<div class="org-base">' + a.base.map(function (x) { return "<span>" + esc(x) + "</span>"; }).join("") + "</div>" : "") + "</div>";
+      }).join("") + "</div>" +
+      '<div class="org-leyenda"><span class="l1">Dirección</span><span class="l2">Áreas</span><span class="l3">Equipos</span><span class="l4">Base de la comunidad</span></div>' +
+      '<p class="org-fuente">Fuente: ' + esc(o.fuente) + "</p></div>";
   }
   // ---------- Inducción para familias y estudiantes nuevos ----------
   function induccionNuevos() {
@@ -1102,8 +1109,11 @@
     }).join("").replace(/(<strong>)(Nivel de la falta:)/g, '<strong class="nivel-falta">$2');
   }
 
+  var AVISO_JURIDICO = "*Importante: orientación preliminar basada solo en lo descrito; no es una calificación jurídica ni puede usarse como respaldo. Solo la Fiscalía y los Tribunales determinan si hay delito. Consulte al área jurídica del SLEP Andalién Sur.*";
   // ---------- Posible delito: sección destacada en rojo, con ícono y aviso de denuncia ----------
   function marcarDelito(cont, r) {
+    // En pantalla la advertencia se muestra en su recuadro; la línea de texto (para copiar/PDF) no se repite
+    cont.querySelectorAll("p").forEach(function (p) { if (/^Importante: orientaci[oó]n preliminar/.test(p.textContent.trim())) p.remove(); });
     var h = [].slice.call(cont.querySelectorAll("h2,h3")).filter(function (x) { return /constitutivo de delito|posible delito|\bdelito\b/i.test(x.textContent); })[0];
     if (!h) return;
     var caja = el("div", "seccion-delito"), sig = h.nextElementSibling;
@@ -1116,10 +1126,12 @@
     var q = r.busqueda || r.consulta || "";
     if (/foto|imagen|video|nude|pack|sexting|captura|grab/i.test(q) && /[ií]ntim|desnud|sexual|nude|pack|sexting|er[oó]tic/i.test(q))
       caja.insertAdjacentHTML("beforeend", '<p class="aviso-imagenes">' + ico("alerta") + " <b>No reenvíes, guardes, descargues ni muestres las imágenes</b>, ni siquiera como prueba: si aparece una persona menor de 18 años, eso también puede ser delito (Código Penal, art. 367 quáter). Anota solo dónde se vio y quiénes lo informaron, y entrégalo a la Fiscalía con la denuncia.</p>");
-    if (!/no reemplaza la asesor/i.test(caja.textContent)) caja.insertAdjacentHTML("beforeend", '<p class="nota-juridica"><em>Orientación jurídica general basada en los hechos descritos; no reemplaza la asesoría del área jurídica del SLEP Andalién Sur ni la decisión de la Fiscalía.</em></p>');
-    caja.insertAdjacentHTML("afterbegin", '<div class="sello-delito" role="alert">' + ico("alerta") + "<div><b>POSIBLE DELITO</b><span>Denuncia obligatoria dentro de 24 horas (Código Procesal Penal, arts. 175-177). Activa además el protocolo del RIE.</span></div></div>");
+    // La advertencia jurídica va siempre al final de la sección (también viaja al copiar o descargar el PDF: ver AVISO_JURIDICO)
+    caja.querySelectorAll("p").forEach(function (p) { if (/no es una calificaci[oó]n jur[ií]dica|no reemplaza la asesor/i.test(p.textContent) && !p.classList.contains("nota-juridica")) p.remove(); });
+    caja.insertAdjacentHTML("beforeend", '<div class="nota-juridica">' + ico("balanza") + "<div><b>Orientación preliminar, no es una calificación jurídica.</b> Se basa solo en lo descrito y no puede usarse como respaldo ni citarse como decisión. <b>Solo la Fiscalía y los Tribunales determinan si hay delito</b> y quién es responsable. Ante la duda, consulte al área jurídica del SLEP Andalién Sur.</div></div>");
+    caja.insertAdjacentHTML("afterbegin", '<div class="sello-delito" role="alert">' + ico("alerta") + "<div><b>PODRÍA REVESTIR CARACTERES DE DELITO</b><span>Según lo descrito. No se requiere certeza para denunciar: hazlo dentro de 24 horas (Código Procesal Penal, arts. 175-177) y activa el protocolo del RIE. Calificarlo corresponde a la Fiscalía.</span></div></div>");
     // Aviso también al inicio de la respuesta
-    cont.insertAdjacentHTML("afterbegin", '<p class="aviso-delito">' + ico("alerta") + " <b>Atención: el hecho podría constituir delito.</b> Revisa la sección destacada en rojo.</p>");
+    cont.insertAdjacentHTML("afterbegin", '<p class="aviso-delito">' + ico("alerta") + " <b>Atención: según lo descrito, el hecho podría revestir caracteres de delito.</b> Es una orientación preliminar: solo la Fiscalía y los Tribunales lo determinan. Revisa la sección destacada.</p>");
   }
 
   // ---------- Presentación visual: fichas de rutina, pasos en línea de tiempo y recuadros ----------
@@ -1176,6 +1188,12 @@
       var corte = r.texto.search(/\n#{2,3} (?!En breve)/);
       r.texto = corte > 0 ? r.texto.slice(0, corte) + "\n\n" + tablaP + "\n" + r.texto.slice(corte) : tablaP + "\n\n" + r.texto;
     }
+    // Corrección de citas: los artículos de delitos son del Código Penal; el CPP (Código Procesal Penal) solo se usa para la denuncia (arts. 175-177)
+    r.texto = r.texto.replace(/(art(?:[íi]culo)?s?\.?\s*(\d{3})(?:\s*(?:N[°º]\s*\d|bis|ter|qu[aá]ter))?)(\s*,?\s*)(CPP|C[oó]digo Procesal Penal)\b/gi, function (m, art, num, sep, cod) {
+      return /^17[5-7]$/.test(num) ? m : art + sep + "Código Penal";
+    });
+    // Posible delito: la advertencia jurídica se agrega al texto para que no se pierda al copiar, compartir o descargar en PDF
+    if (/revestir caracteres de delito|constitutivo de delito/i.test(r.texto) && r.texto.indexOf(AVISO_JURIDICO) < 0) r.texto += "\n\n" + AVISO_JURIDICO;
     // El cálculo exacto va al inicio del texto (así también aparece al copiar, compartir o descargar en PDF)
     if (r.calculo && r.texto.indexOf("### Porcentaje ") < 0) r.texto = mdCalculo(r.calculo) + "\n\n" + r.texto;
     var idx = estado.respuestas.length; estado.respuestas.push(r); r.graficos = [];
