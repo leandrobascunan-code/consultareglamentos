@@ -238,6 +238,7 @@
     [/copi(a|ar|ando)|plagi|torpedo/i, "copia plagio suplantacion evaluacion"],
     [/cierre anticipado|terminar el a[nñ]o/i, "cierre anticipado ano escolar solicitud"],
     [/atras(o|ada|ado)s?\b|llega(r)? tarde/i, "atrasos puntualidad ingreso jornada"],
+    [/primer d[ií]a|reci[eé]n llegad|llegar al colegio|al llegar|me presento|recepci[oó]n del (profesor|docente)/i, "recepcion activacion profesor reemplazo inspectoria enrolado utp ficha presentacion curso"],
     [/\bca[yí](d[oa]|[oó])\b|se cay|se golpe[oó]|lesion[oó]|se hiri[oó]|accident|se fractur|se torci[oó]/i, "accidente accidentes escolar lesion seguro enfermeria protocolo"]
   ];
   var EVAL = /evaluaci|calific|nota|prueba|promoci|repit|examen|reevalu|eximi|adecuaci|asistencia/i;
@@ -277,7 +278,7 @@
     if ((EVAL.test(t) || esAusenciaEvaluacion(t)) && !RE_EVAL_FALTA.test(t) && !/insult|agred|agresi|pelea|golpe|amenaz|bullying|acoso|rob|da[nñ]|sanci|anotaci|disciplin/i.test(t)) return false;
     return true;
   }
-  function buscar(consulta, k) {
+  function buscar(consulta, k, soloRutinas) {
     if (!indice) construirIndice();
     var extra = INTENCIONES.filter(function (r) { return r[0].test(consulta); }).map(function (r) { return r[1]; }).join(" ");
     var q = terminos(consulta + " " + extra, true); if (!q.length) return [];
@@ -286,6 +287,7 @@
     var qset = {}; q.forEach(function (w) { qset[w] = (qset[w] || 0) + 1; });
     indice.docs.forEach(function (d) {
       var f = KB.fragmentos[d.i]; if (ocultos.indexOf(claveDoc(f.d)) >= 0) return;
+      if (soloRutinas && f.d !== "rutinas" && f.d !== "induccion") return;
       var s = 0;
       Object.keys(qset).forEach(function (w) {
         var tf = d.tf[w]; if (!tf) return;
@@ -297,15 +299,20 @@
       if (f.p >= 180 && f.d === "rie" && !/p[aá]rvul|parvularia|kinder|kínder|pre-?k|transici[oó]n|nt[12]\b|sala cuna|nivel medio|educadora/i.test(consulta)) s *= 0.55;
       if (f.d === "rutinas" || f.d === "induccion") {
         if (RE_RUTINA.test(consulta)) s *= 1.5;
-        if (estado.perfil.rol === ROL_REEMPLAZO || estado.perfil.rol === ROL_PRACTICA) s *= 1.3;
+        if ((estado.perfil.rol === ROL_REEMPLAZO || estado.perfil.rol === ROL_PRACTICA) && (soloRutinas || RE_RUTINA.test(consulta))) s *= 1.3;
         if (f.d === "induccion" && (estado.perfil.rol === ROL_PRACTICA || /pr[aá]ctica|practicante|formaci[oó]n/i.test(consulta))) s *= 1.6;
       }
       if (s > 0) res.push({ f: f, puntaje: s });
     });
     res.sort(function (a, b2) { return b2.puntaje - a.puntaje; });
     // Las rutinas complementan, no desplazan, al reglamento: máximo 1 (o 3 si la pregunta es de rutinas o el perfil es reemplazante/practicante)
-    var maxRut = RE_RUTINA.test(consulta) ? 3 : (estado.perfil.rol === ROL_REEMPLAZO || estado.perfil.rol === ROL_PRACTICA) ? 2 : 1, nRut = 0;
-    res = res.filter(function (x) { if (x.f.d !== "rutinas" && x.f.d !== "induccion") return true; return ++nRut <= maxRut; });
+    var maxRut = soloRutinas ? 99 : RE_RUTINA.test(consulta) ? 3 : 1, nRut = 0;
+    var tope = res.length ? res[0].puntaje : 0;
+    res = res.filter(function (x) {
+      if (x.f.d !== "rutinas" && x.f.d !== "induccion") return true;
+      if (!soloRutinas && !RE_RUTINA.test(consulta) && x.puntaje < tope * 0.6) return false;   // en otros temas, solo si es realmente pertinente
+      return ++nRut <= maxRut;
+    });
     return res.slice(0, k || 5);
   }
   function etiquetaFuente(f) {
@@ -670,6 +677,7 @@
     [/delito|denuncia/i, "alerta", "#8E1B1B"],
     [/ajusta a derecho|a derecho/i, "balanza", "#C0392B"],
     [/en breve|resumen/i, "bombilla", "#D9A400"],
+    [/^recuerda/i, "bombilla", "#D9A400"],
     [/profundizar/i, "timon", "#0E2A68"],
     [/qu[eé] establece/i, "libro", "#0E2A68"],
     [/protocolo|seguridad|riesgo|denuncia|urgente|alerta|importante|precauc/i, "escudo", "#D64545"],
@@ -828,8 +836,17 @@
     }
     if (!frags.length) frags = buscar(consultaBusqueda.replace(/[¿?¡!.,;:]/g, " ").split(/\s+/).filter(function (w) { return w.length > 4; }).join(" "), 5);
     var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
-    var nivelF = clasificaFalta(consultaBusqueda);
-    var disciplinario = delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
+    // Modo rutinas: preguntas del Manual de Rutinas o de la práctica se responden SOLO con el manual y la inducción
+    // (no se mezclan reglamentos ni leyes), salvo que hablen de faltas, delitos o protocolos
+    var pregunta = opts.esRespuesta ? consultaBusqueda : texto;
+    var esRutina = !delito && !pideProtocolos(consultaBusqueda) && !RE_DISCIPLINA.test(texto) &&
+      !/accident|ca[yí]|lesi[oó]n|herid|desregul|crisis|suicid|autoles|abus|vulnera|emergencia|sismo|incendio|evacua|arma|droga|agre|pelea|golpe/i.test(texto) && RE_RUTINA.test(pregunta);
+    if (esRutina) {
+      var soloRut = buscar(consultaBusqueda, 4, true);
+      if (soloRut.length) { frags = soloRut; tema = "Rutinas, reemplazos y prácticas"; } else esRutina = false;
+    }
+    var nivelF = !esRutina && clasificaFalta(consultaBusqueda);
+    var disciplinario = !esRutina && delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
     function agregarNorma(id) {
       var x = BASE.normativa.filter(function (k) { return k.url.slice(-(id.length + 1)) === "=" + id || k.url.indexOf("=" + id + "&") > 0; })[0];
@@ -848,6 +865,7 @@
       if (/\btea\b|autis/i.test(consultaBusqueda)) agregarNorma("21545");
     }
     normativa = normativa.slice(0, 12);
+    if (esRutina) { normativa = []; disciplinario = false; derechos = false; }
     // Mensaje de espera: Timón (cuerpo completo) "habla" mientras se prepara la respuesta
     var pensando = el("div", "msg ia pensando");
     pensando.innerHTML = '<div class="avatar grande">' + mascotaHTML("hablando") + '</div><div class="burbuja"><div class="escribiendo"><i></i><i></i><i></i><span>Revisando el Reglamento Interno…</span></div></div>';
@@ -861,7 +879,10 @@
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
       historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
-      protocolos: pideProtocolos(consultaBusqueda), nivelFalta: nivelF,
+      protocolos: pideProtocolos(consultaBusqueda), nivelFalta: nivelF && !opts.esRespuesta, rutinas: esRutina, profundizar: !!opts.esRespuesta,
+      anterior: opts.esRespuesta ? ultimaConsulta().slice(0, 300) : "",
+      // Rutinas encontradas, en orden de pertinencia: la IA debe usar estas y no otras
+      rutinasHalladas: esRutina ? frags.filter(function (x) { return x.f.d === "rutinas"; }).map(function (x) { return "Rutina " + x.f.p + ": " + (rutinaPorNumero(x.f.p) || {}).titulo; }).filter(function (v, i, a) { return a.indexOf(v) === i; }) : [],
       fragmentos: indiceProtocolos(consultaBusqueda).concat(frags.map(function (r) { return { fuente: etiquetaFuente(r.f), texto: r.f.t.slice(0, 1400) }; })).slice(0, 6),
       normativa: normativa.map(function (n) { return n.titulo + " → " + n.url; }),
       pei: { mision: cat.pei.mision, vision: cat.pei.vision, sellos: cat.pei.sellos, valores: cat.pei.valores, historia: (cat.pei.historia || "").slice(0, 600) },
@@ -871,7 +892,7 @@
       clearInterval(relojEspera); estado.ocupado = false; $("#btnEnviar").disabled = false; pensando.remove();
       estado.mensajes.push({ role: "user", content: texto });
       if (!local) estado.mensajes.push({ role: "assistant", content: resp.texto });
-      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, nivelFalta: nivelF, delito: delito, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
+      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, nivelFalta: nivelF, delito: delito, rutinas: esRutina, profundizar: !!opts.esRespuesta, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
         servidor: (resp.fuentesServidor || []).filter(function (s) { return s && s.titulo && new RegExp("\\[S\\d\\]|" + String(s.titulo).slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(resp.texto); }) });
     };
     // Estadística anónima (tema y rol) en paralelo: no retrasa la respuesta
@@ -990,6 +1011,34 @@
     cont.insertAdjacentHTML("afterbegin", '<p class="aviso-delito">' + ico("alerta") + " <b>Atención: el hecho podría constituir delito.</b> Revisa la sección destacada en rojo.</p>");
   }
 
+  // ---------- Presentación visual: fichas de rutina, pasos en línea de tiempo y recuadros ----------
+  var COLOR_CAT = { "Pedagógica": "#1E4FA3", "Convivencia escolar": "#E67E22", "Gestión administrativa": "#0E7C86", "Seguridad": "#D64545" };
+  function seccionDe(h) {   // agrupa un título con su contenido (hasta el siguiente título)
+    var caja = el("div"), sig = h.nextElementSibling;
+    h.parentNode.insertBefore(caja, h); caja.appendChild(h);
+    while (sig && !/^H[23]$/.test(sig.tagName) && !sig.classList.contains("seccion-delito")) { var n = sig.nextElementSibling; caja.appendChild(sig); sig = n; }
+    return caja;
+  }
+  function darFormatoVisual(cont, r) {
+    // Pasos numerados como línea de tiempo (en todas las respuestas)
+    [].slice.call(cont.querySelectorAll("h3")).forEach(function (h) {
+      var t = h.textContent.trim(), m = t.match(/^Rutina\s+(\d+)\s*[:–-]?\s*(.*)$/i);
+      if (m) {
+        var rut = rutinaPorNumero(m[1]), color = rut ? (COLOR_CAT[rut.categoria] || "#1E4FA3") : "#1E4FA3";
+        var caja = seccionDe(h); caja.className = "ficha-rutina"; caja.style.setProperty("--color-ficha", color);
+        h.innerHTML = '<span class="num-rutina">' + esc(m[1]) + '</span><span class="tit-rutina"><small>' + esc(rut ? rut.categoria : "Manual de Rutinas") + "</small>" + esc(rut ? rut.titulo : m[2]) + "</span>";
+        if (rut) {
+          var b = el("button", "boton sec ver-ficha", ico("libro") + " Ver rutina completa"); b.type = "button";
+          b.onclick = function () { verRutina(rut); }; caja.appendChild(b);
+        }
+      } else if (/^recuerda/i.test(t)) {
+        seccionDe(h).className = "recuadro-recuerda";
+      }
+    });
+    cont.querySelectorAll("ol").forEach(function (ol) { ol.classList.add("pasos-linea"); });
+    if (r.profundizar) cont.insertAdjacentHTML("afterbegin", '<p class="etiqueta-profundizar">' + ico("timon") + " Profundizando en tu elección</p>");
+  }
+
   // ---------- Pintar una respuesta completa ----------
   function mostrarRespuesta(r) {
     r.texto = String(r.texto || "").replace(/\bRIE\s+20(2[0-57-9]|3\d)\b/g, "RIE 2026");   // el Reglamento Interno vigente es el 2026
@@ -1003,11 +1052,12 @@
     var bl = aBloques(r.texto);
     // Fuentes externas sugeridas (enlaces verificados) si la IA no las incluyó
     var tieneExternas = /fuentes externas sugeridas/i.test(r.texto);
-    r.externas = tieneExternas ? [] : fuentesPara(r.busqueda || r.consulta, 3);
+    r.externas = (tieneExternas || r.rutinas || r.profundizar) ? [] : fuentesPara(r.busqueda || r.consulta, 3);
     var m = msgIA("", { sinBajar: true }), cont = $(".contenido", m);
     var html = (r.local ? '<span class="etiqueta-local">' + ico("archivo") + " Modo sin conexión · base local</span>" : "") + (r.nivelFalta ? colorearFaltas(bloquesHTML(bl)) : bloquesHTML(bl));
     cont.innerHTML = html;
     marcarDelito(cont, r);
+    darFormatoVisual(cont, r);
     // Si pregunta a quién contactar o por el equipo, se muestran los correos (la IA no los inventa)
     if (/correo|contact|equipo (del|directivo)|qui[eé]n(es)? (es|son|est[aá]) (el|la|los|las|a cargo)|director[a]?\b|jef[ae] de utp|a qui[eé]n (le )?(escribo|aviso|informo|acudo)/i.test(r.busqueda || r.consulta) && equipoVisible().length) {
       cont.insertAdjacentHTML("beforeend", '<h3><span class="ico-titulo" style="background:#0E7C86">' + ico("usuarios") + "</span>Equipo del establecimiento</h3>" + equipoHTML());

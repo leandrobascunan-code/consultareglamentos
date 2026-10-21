@@ -422,3 +422,28 @@ strong.nivel-falta{display:inline-block;margin:2px 0 4px}
 }
 /* Celular: 7 roles + Otro en 4 filas compactas para que la bienvenida quepa completa */
 @media (max-width:640px){ .msg.ia .chips.roles{gap:5px;grid-template-columns:repeat(3,1fr)} .msg.ia .chips.roles .chip{padding:3px 5px;font-size:.74rem;line-height:1.08;min-height:34px;justify-content:center;text-align:center} .bienvenida .privacidad{padding:6px 9px;font-size:.75rem;margin-bottom:4px} .bienvenida{margin-bottom:6px} }
+
+/* ===== Presentación visual de rutinas y pasos ===== */
+.ficha-rutina{--color-ficha:#1E4FA3;border:1px solid var(--borde);border-left:6px solid var(--color-ficha);border-radius:16px;background:var(--superficie);box-shadow:0 2px 10px rgba(14,42,104,.07);padding:12px 14px 12px;margin:12px 0}
+.ficha-rutina h3{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.ficha-rutina .num-rutina{flex:none;width:40px;height:40px;border-radius:12px;background:var(--color-ficha);color:#fff;font-weight:900;font-size:1.05rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.ficha-rutina .tit-rutina{display:flex;flex-direction:column;line-height:1.25;font-size:1rem}
+.ficha-rutina .tit-rutina small{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--color-ficha);font-weight:900}
+.ficha-rutina .ver-ficha{margin-top:4px;padding:6px 12px;font-size:.82rem}
+ol.pasos-linea{list-style:none;counter-reset:paso;padding:0;margin:8px 0}
+ol.pasos-linea>li{counter-increment:paso;position:relative;padding:2px 0 12px 42px;margin:0}
+ol.pasos-linea>li::before{content:counter(paso);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--color-ficha,#1E4FA3);color:#fff;font-weight:900;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+ol.pasos-linea>li::after{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:2px;background:var(--borde)}
+ol.pasos-linea>li:last-child{padding-bottom:2px}
+ol.pasos-linea>li:last-child::after{display:none}
+ol.pasos-linea>li strong:first-child{color:var(--color-ficha,var(--marino))}
+.recuadro-recuerda{background:#FFF8D6;border:1px solid #F2C200;border-radius:14px;padding:6px 14px 8px;margin:12px 0}
+.recuadro-recuerda h3{margin-top:6px}
+.etiqueta-profundizar{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:4px 12px;border-radius:99px;background:var(--superficie-2);border:1px solid var(--borde);font-size:.8rem;font-weight:800;color:var(--azul)}
+.etiqueta-profundizar svg{width:16px;height:16px}
+:root[data-theme="dark"] .recuadro-recuerda{background:#3a3000;border-color:#C9A400}
+:root[data-theme="dark"] ol.pasos-linea>li strong:first-child{color:#9cc3ff}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .recuadro-recuerda{background:#3a3000;border-color:#C9A400}
+  :root:not([data-theme="light"]) ol.pasos-linea>li strong:first-child{color:#9cc3ff}
+}@media (max-width:640px){ .ficha-rutina{padding:10px 10px 10px 10px;border-left-width:5px;margin:10px 0} .ficha-rutina .num-rutina{width:34px;height:34px;font-size:.95rem} ol.pasos-linea>li{padding-left:32px} ol.pasos-linea>li::before{width:24px;height:24px;font-size:.78rem} ol.pasos-linea>li::after{left:11px;top:26px} .recuadro-recuerda{padding:4px 10px 6px} }
