@@ -112,7 +112,7 @@
   // ---------- Manual de Rutinas, equipo del colegio e inducción de practicantes (editables en el Panel) ----------
   var RUT = window.DATOS_RUTINAS || { rutinas: [], equipo: [], induccion: { titulo: "", secciones: [] }, contacto: {} };
   var POR_DEFECTO = { protocolos: BASE.protocolos, rutinas: RUT.rutinas, equipo: RUT.equipo, induccion: RUT.induccion };
-  var ROL_REEMPLAZO = "Docente reemplazante", ROL_PRACTICA = "Estudiante en práctica";
+  var ROL_REEMPLAZO = "Docente reemplazante", ROL_PRACTICA = "Estudiante en práctica", ROL_NUEVO = "Familia o estudiante nuevo";
   function sinMarcas(s) { return String(s || "").replace(/\*\*([^*]+)\*\*/g, "$1"); }
   function textoRutina(r) {
     return "Rutina " + r.n + ": " + r.titulo + ". Dirigida a: " + (r.dirigida || []).join(", ") + ". Referente: " + (r.referente || "") + ". Objetivo: " + (r.objetivo || "") +
@@ -325,7 +325,7 @@
   var RE_DERECHOS = /derecho|celular|tel[eé]fono|dispositivo|embaraz|maternidad|paternidad|matr[ií]cula|repit|discrimin|medicament|tdah|identidad de g[eé]nero|nombre social|religi|opini[oó]n|inclusi|\btea\b|autis|\bnee\b|\bpie\b|expuls|cancelaci|suspen|condicional|uniforme|corte de pelo|cabello|retir/i;
   var RE_DISCIPLINA = /falta|sanci[oó]n|sanciones|medida disciplin|suspen|expuls|cancelaci[oó]n de matr|condicionalidad|debido proceso|aula segura|anotaci/i;
   // Conductas de convivencia que pueden ser falta (para clasificar leve, grave o gravísima)
-  var RE_CONDUCTA = /insult|ofend|garabat|groser|falta(s)? de respeto|irrespet|burl|agred|agresi|pelea|golpe|peg[oóaué]|pegar|empuj|bullying|acoso|amenaz|discrimin|da[nñ]|destroz|ray[oóa]|rob|hurt|fug|cimarra|escap|celular|tel[eé]fono|uniforme|presentaci[oó]n personal|atras|cigarr|vape|fum|droga|alcohol|arma|cuchillo|copi(a|ar|ó|o)|plagi|suplant|falsific|adulter|grab[oóa]|foto|video|redes sociales|desobedec|interrump|disrupt|conducta/i;
+  var RE_CONDUCTA = /insult|ofend|garabat|groser|falta(s)? de respeto|irrespet|burl|agred|agresi|pelea|golpe|peg[oóaué]|pegar|empuj|bullying|acoso|amenaz|discrimin|da[nñ]|destroz|ray[oóa]|rob|hurt|fug|cimarra|escap|celular|tel[eé]fono|cigarr|vape|fum|droga|alcohol|arma|cuchillo|copi(a|ar|ó|o)|plagi|suplant|falsific|adulter|grab[oóa]|foto|video|redes sociales|desobedec|interrump|disrupt|conducta/i;
   // Evaluación que NO es falta (salvo copiar, plagiar, suplantar o adulterar)
   var RE_EVAL_FALTA = /copi(a|ar|ó|o|aron|ando)|plagi|suplant|falsific|adulter|torpedo|filtr[oóa] (la )?prueba|rob[oóa] (la )?prueba/i;
   // Preguntas propias del Manual de Rutinas (en ellas las rutinas tienen prioridad; en el resto, a lo más una)
@@ -453,6 +453,7 @@
   //  PERFIL (rol y cargo) – dura solo esta conversación
   // =====================================================================
   var PATRONES_CARGO = [
+    [/\b(apoderad[oa]|familia|estudiante|alumn[oa]|mam[aá]|pap[aá]|hij[oa])\b[^.,;]{0,25}\bnuev[oa]s?\b|\bnuev[oa]s?\b[^.,;]{0,25}\b(apoderad|familia|estudiante|alumn)|reci[eé]n (llegad|matriculad|ingresad)|primer a[nñ]o en el colegio|me (acabo de )?matricul/i, "Familia o estudiante nuevo", ""],
     [/\b(reemplaz\w*|suplente)\b/i, "Docente reemplazante", ""],
     [/\b(practicante|en pr[aá]ctica|profesor[a]? en formaci[oó]n|estudiante de pedagog[ií]a|pr[aá]ctica profesional|pr[aá]ctica progresiva)\b/i, "Estudiante en práctica", ""],
     [/\b(apoderad[oa]|mam[aá]|pap[aá]|madre|padre|tutor[a]?)\b/i, "Apoderado/a", ""],
@@ -506,6 +507,7 @@
     "Docente": ["¿Qué hago si un estudiante falta a una prueba?", "¿Cuántas calificaciones debo registrar por semestre?", "¿Cuándo debo reevaluar a todo el curso?", "¿Cómo actúo ante una agresión en la sala?"],
     "Equipo directivo y de gestión": ["¿Cómo funciona la promoción con asistencia menor a 85%?", "¿Qué pasos tiene el debido proceso ante una falta gravísima?", "Resume el protocolo de vulneración de derechos", "¿Cómo se solicita el cierre anticipado del año escolar?"],
     "Asistente de la educación": ["¿Qué hago si presencio una pelea en el recreo?", "¿Cómo actuar ante un accidente escolar?", "¿Qué hacer ante una desregulación emocional?", "¿Cómo se administran medicamentos a estudiantes?"],
+    "Familia o estudiante nuevo": ["¿Qué debo saber del uniforme y los horarios?", "¿Qué pasa si llego atrasado/a?", "¿Cómo se evalúa y con qué nota se aprueba?", "¿A quién acudo si tengo un problema?"],
     "Docente reemplazante": ["¿Qué debo hacer al llegar a mi primer día de reemplazo?", "¿Cómo inicio y cierro una clase según las rutinas del colegio?", "¿Qué hago ante una conducta disruptiva en la sala?", "¿Cómo completo el libro de clases?"],
     "Estudiante en práctica": ["¿Qué normas debo cumplir como profesor/a en formación?", "¿Cómo es la inducción de mi práctica?", "¿Qué hago si tengo un conflicto con un estudiante?", "¿Qué rutinas debo aplicar en el aula?"],
     "Apoderado/a": ["¿Cómo justifico una inasistencia de mi hijo/a?", "¿Qué hago si mi hijo/a sufre acoso escolar?", "¿Qué pasa si mi hijo/a llega atrasado/a?", "¿Cómo ingreso al colegio para una entrevista?"],
@@ -601,6 +603,45 @@
     $(".contenido", m).appendChild(chips(sug, function (v) { enviarConsulta(v); }, { multiple: true }));
     hablar(m);
     if (p.rol === ROL_REEMPLAZO || p.rol === ROL_PRACTICA) setTimeout(function () { bienvenidaEspecial(p.rol); }, 400);
+    if (p.rol === ROL_NUEVO) setTimeout(induccionNuevos, 400);
+  }
+  // ---------- Organigrama (RIE 2026, Art. 7, p. 14) ----------
+  function organigramaHTML() {
+    var o = BASE.organigrama; if (!o) return "";
+    return '<div class="organigrama" role="img" aria-label="Organigrama del colegio"><div class="org-cima"><div class="org-nodo org-dir">' + esc(o.cabeza) + '</div><div class="org-nodo org-apoyo">' + esc(o.apoyo) + "</div></div>" +
+      '<div class="org-areas">' + o.areas.map(function (a) {
+        return '<div class="org-area"><div class="org-nodo org-n2">' + esc(a.nombre) + '</div><p class="org-tarea">' + esc(a.tarea) + "</p>" +
+          '<div class="org-chips">' + a.equipos.map(function (x) { return '<span class="org-chip verde">' + esc(x) + "</span>"; }).join("") + "</div>" +
+          (a.base.length ? '<div class="org-chips">' + a.base.map(function (x) { return '<span class="org-chip celeste">' + esc(x) + "</span>"; }).join("") + "</div>" : "") + "</div>";
+      }).join("") + '</div><p class="org-fuente">Fuente: ' + esc(o.fuente) + "</p></div>";
+  }
+  // ---------- Inducción para familias y estudiantes nuevos ----------
+  function induccionNuevos() {
+    var pei = catalogoEfectivo().pei, sellos = BASE.pei.sellosDetalle || [];
+    var ICO_SELLO = ["birrete", "usuario", "globo", "magia"];
+    var html = '<div class="induccion">' +
+      '<h2 class="ind-titulo">¡Bienvenido/a al ' + esc(catalogoEfectivo().info.nombre) + "!</h2>" +
+      '<p class="ind-intro">Esta es una inducción breve para conocer nuestro colegio y sus reglamentos. Puedes preguntarme cualquier duda cuando quieras.</p>' +
+      '<div class="ind-pei"><div class="ind-card mision"><span>' + ico("timon") + ' Nuestra misión</span><p>' + esc(pei.mision) + '</p></div><div class="ind-card vision"><span>' + ico("ojo") + " Nuestra visión</span><p>" + esc(pei.vision) + "</p></div></div>" +
+      '<h3 class="ind-h">' + ico("escudoOk") + " Nuestros sellos</h3>" +
+      '<div class="ind-sellos">' + sellos.map(function (s, i) { return '<div class="sello"><i>' + ico(ICO_SELLO[i % 4]) + "</i><b>" + esc(s.nombre) + "</b><small>" + esc(s.texto) + "</small></div>"; }).join("") + "</div>" +
+      '<p class="ind-fuente">Fuente: Reglamento Interno Escolar 2026, Artículo 6 (p. 12).</p>' +
+      '<h3 class="ind-h">' + ico("usuarios") + " Cómo nos organizamos</h3>" + organigramaHTML() +
+      '<h3 class="ind-h">' + ico("libro") + " Los reglamentos en pocas palabras</h3>" +
+      '<div class="ind-regl">' +
+        '<div class="regl"><b>Reglamento Interno (RIE 2026)</b><ul><li>Normas de convivencia, derechos y deberes de estudiantes y familias.</li><li>Uniforme, horarios, atrasos e inasistencias.</li><li>Faltas <span class="falta f-leve">leves</span>, <span class="falta f-grave">graves</span> y <span class="falta f-gravisima">gravísimas</span>, con medidas formativas y debido proceso.</li><li>Protocolos ante situaciones como accidentes, acoso o vulneración de derechos.</li></ul></div>' +
+        '<div class="regl"><b>Reglamento de Evaluación 2026</b><ul><li>Notas de 1,0 a 7,0; se aprueba con <b>4,0</b> (60% de logro) (Art. 17).</li><li>No se exime de ninguna asignatura (Art. 14).</li><li>Si faltas a una prueba, se rinde en otra instancia según el protocolo (Art. 16).</li><li>Las pruebas se avisan con al menos 10 días hábiles (Art. 23).</li></ul></div>' +
+        '<div class="regl"><b>Manual de Rutinas</b><ul><li>Atrasos: se ingresa con pase de Inspectoría, sin interrumpir la clase (Rutina 9).</li><li>Las visitas se registran en portería y los apoderados ingresan con cita o para retirar (Rutina 20).</li><li>Accidentes y evacuación: qué hace el colegio (Rutinas 18 y 19).</li></ul></div>' +
+      "</div>" +
+      '<h3 class="ind-h">' + ico("usuario") + " ¿A quién acudir?</h3>" +
+      '<ol class="pasos-linea"><li><strong>Profesor/a jefe:</strong> es tu primer contacto para cualquier duda o situación.</li><li><strong>Según el tema:</strong> UTP (aprendizaje y evaluación), Inspectoría (asistencia, atrasos y disciplina) o Convivencia Escolar (conflictos y buen trato).</li><li><strong>Por escrito:</strong> las inquietudes formales se presentan en el libro de reclamos y sugerencias de portería, respetando el conducto regular (RIE 2026, Art. 31, p. 40).</li></ol>' +
+      '<div class="ind-compromiso">' + ico("balanza") + "<div><b>Nuestro compromiso común</b> Al formar parte de la comunidad, estudiantes, familias y funcionarios nos comprometemos a conocer, adherir y respetar el Proyecto Educativo, el Reglamento Interno, el Reglamento de Evaluación y las leyes de la República (RIE 2026, Art. 31.4, p. 40; Ley General de Educación, art. 10).</div></div>" +
+      '<h3 class="ind-h">' + ico("correo") + " Equipo del establecimiento</h3>" + equipoHTML() +
+      '<div class="acciones-resumen"><button type="button" class="boton" data-ver="protocolos">' + ico("escudo") + ' Protocolos</button><button type="button" class="boton sec" data-ver="rutinas">' + ico("lista") + ' Rutinas</button><button type="button" class="boton sec" data-ver="colegio">' + ico("libro") + " Reglamentos completos</button></div></div>";
+    var m = msgIA(html, { sinBajar: true });
+    activarCopiar(m);
+    m.querySelectorAll("[data-ver]").forEach(function (b) { b.onclick = function () { biblioteca(b.getAttribute("data-ver")); }; });
+    irA(m); hablar(m, 2500);
   }
   // Resumen de bienvenida para docentes reemplazantes y estudiantes en práctica
   function bienvenidaEspecial(rol) {
@@ -1106,6 +1147,23 @@
       }
     });
     cont.querySelectorAll("ol").forEach(function (ol) { ol.classList.add("pasos-linea"); });
+    // Tablas de "Responsables y plazos": se muestran como tarjetas numeradas (se leen mejor en el celular)
+    cont.querySelectorAll(".tabla-envoltura").forEach(function (env) {
+      var ths = [].slice.call(env.querySelectorAll("th")).map(function (th) { return th.textContent.trim(); });
+      var iR = ths.findIndex(function (h) { return /responsab|qui[eé]n/i.test(h); });
+      if (iR < 0 || ths.some(function (h) { return /p[aá]gina/i.test(h); })) return;   // la lista de protocolos sigue como tabla
+      var iP = ths.findIndex(function (h) { return /plazo|cu[aá]ndo|tiempo|fecha/i.test(h); });
+      var filas = [].slice.call(env.querySelectorAll("tbody tr"));
+      if (!filas.length) return;
+      var html = '<div class="tabla-resp">' + filas.map(function (tr, k) {
+        var tds = [].slice.call(tr.children);
+        var paso = tds.filter(function (td, j) { return j !== iR && j !== iP; }).map(function (td) { return td.innerHTML; }).join(" · ").replace(/^\s*\d+[.)]?\s*/, "");
+        return '<div class="resp-item"><span class="resp-n">' + (k + 1) + '</span><div class="resp-cuerpo"><div class="resp-paso">' + (paso || "Paso " + (k + 1)) + '</div><div class="resp-meta">' +
+          '<span class="chip-resp">' + ico("usuario") + (tds[iR] ? tds[iR].innerHTML : "") + "</span>" +
+          (iP >= 0 && tds[iP] && tds[iP].textContent.trim() ? '<span class="chip-plazo">' + ico("calendario") + tds[iP].innerHTML + "</span>" : "") + "</div></div></div>";
+      }).join("") + "</div>";
+      env.outerHTML = html;
+    });
     if (r.profundizar) cont.insertAdjacentHTML("afterbegin", '<p class="etiqueta-profundizar">' + ico("timon") + " Profundizando en tu elección</p>");
   }
 
@@ -1521,7 +1579,7 @@
         [["Nombre", i.nombre], ["RBD", i.rbd], ["Dependencia", i.dependencia], ["Tipo", i.tipo], ["Niveles", i.niveles], ["Dirección", i.direccion], ["Jornada", i.jornada], ["Programas", i.programas]]
           .filter(function (x) { return x[1]; }).map(function (x) { return "| " + x[0] + " | " + String(x[1]).replace(/\|/g, "/") + " |"; }).join("\n") +
         "\n\n## Misión\n" + p.mision + "\n\n## Visión\n" + p.vision + "\n\n## Sellos educativos\n" + p.sellos + "\n\n## Valores\n" + p.valores +
-        (p.historia ? "\n\n## Historia\n" + p.historia : "") + "\n\n*Fuente: " + p.fuente + "*")) + "</div>";
+        (p.historia ? "\n\n## Historia\n" + p.historia : "") + "\n\n*Fuente: " + p.fuente + "*")) + "<h2>Organigrama</h2>" + organigramaHTML() + "</div>";
     }
     abrirModal(ico("libro") + " Biblioteca", html, [{ texto: "Panel de administración", icono: "usuario", clase: "sec", fn: function () { location.href = "admin.html"; } }, { texto: "Cerrar", clase: "sec", fn: cerrarModal }]);
     document.querySelectorAll(".pestana").forEach(function (b) { b.onclick = function () { biblioteca(b.getAttribute("data-p")); }; });

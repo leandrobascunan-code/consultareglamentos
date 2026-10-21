@@ -17,14 +17,32 @@ window.DATOS_BASE = {
   pei: {
     mision: "Somos una comunidad educativa de carácter científico-humanista, comprometida en el respeto por el medioambiente, el entorno social y los procesos formativos de nuestros/as estudiantes. Nuestro propósito es educar a personas para el siglo XXI bajo un enfoque humanista y los sellos de nuestro colegio, otorgándoles herramientas que les permitan adaptarse a las diversas necesidades de la comunidad y liderar la sociedad del futuro.",
     vision: "Como comunidad, buscamos ser reconocidos como una institución formadora de personas para el siglo XXI, bajo un sistema educativo con enfoque humanista que les permita: cultivar la autonomía, el respeto del medioambiente y el entorno social, desarrollar habilidades de orden superior, participar activamente de procesos educativos, artísticos y deportivos, favoreciendo la continuidad de estudios superiores.",
-    sellos: "1) Formación de personas para la continuidad de estudios superiores. 2) Desarrollo de la autonomía, compromiso y constancia con los procesos educativos. 3) Formación de personas solidarias y responsables en aspectos sociales y medioambientales. 4) Desarrollo de aprendizajes deportivos y artísticos.",
+    sellos: "1) Proyección Académica. 2) Autonomía. 3) Sustentabilidad. 4) Formación Artística y Deportiva.",
+    /* Sellos con una breve explicación (para la inducción de familias y estudiantes nuevos) */
+    sellosDetalle: [
+      { nombre: "Proyección Académica", texto: "Formar estudiantes con habilidades de orden superior y proyección hacia la continuidad de estudios superiores." },
+      { nombre: "Autonomía", texto: "Desarrollar personas autónomas, comprometidas y constantes con su propio proceso educativo." },
+      { nombre: "Sustentabilidad", texto: "Cultivar el respeto y el cuidado del medioambiente y del entorno social, con responsabilidad y solidaridad." },
+      { nombre: "Formación Artística y Deportiva", texto: "Promover la participación activa en procesos artísticos y deportivos como parte de la formación integral." }
+    ],
     valores: "Respeto, Responsabilidad y Empatía (enfoque pedagógico humanista).",
     historia: "",
     fuente: "Reglamento Interno Escolar 2026, Artículo 6 (p. 12). El PEI completo puede cargarse desde el Panel."
   },
-  roles: ["Docente", "Docente reemplazante", "Equipo directivo y de gestión", "Asistente de la educación", "Estudiante en práctica", "Apoderado/a", "Estudiante"],
+  roles: ["Docente", "Docente reemplazante", "Equipo directivo y de gestión", "Asistente de la educación", "Estudiante en práctica", "Apoderado/a", "Estudiante", "Familia o estudiante nuevo"],
+  /* Organigrama del establecimiento (RIE 2026, Art. 7, p. 14) */
+  organigrama: {
+    fuente: "Reglamento Interno Escolar 2026, Artículo 7 (p. 14)",
+    cabeza: "Directora", apoyo: "Secretaría",
+    areas: [
+      { nombre: "UTP (Unidad Técnico-Pedagógica)", tarea: "Lo pedagógico: aprendizaje, evaluación y planificación.", equipos: ["Coordinadores de ciclo", "Coordinadores de departamento", "Orientación", "CRA (biblioteca)", "Informática"], base: ["Profesores", "Profesores jefes"] },
+      { nombre: "PIE (Programa de Integración Escolar)", tarea: "Apoyos para estudiantes con necesidades educativas especiales.", equipos: ["Profesores", "Profesionales"], base: [] },
+      { nombre: "Inspectorías (1° ciclo, 2° ciclo y Enseñanza Media)", tarea: "Asistencia, atrasos, disciplina y funcionamiento diario.", equipos: ["Encargado/a de Convivencia Escolar", "Asistente social", "Psicólogo/a"], base: ["Paradocentes", "Auxiliares"] }
+    ]
+  },
   /* Cómo debe responder la IA según el rol (se envía junto a la consulta) */
   guiaRoles: {
+    "Familia o estudiante nuevo": "Es una familia (madre, padre, apoderado/a) o un/a estudiante que recién llega al colegio. Dale una bienvenida cálida y explica con lenguaje simple y ordenado: qué dice el reglamento sobre lo que pregunta, sus derechos y deberes, y a quién acudir (profesor/a jefe primero; luego Inspectoría, UTP o Convivencia según el tema; las inquietudes formales se presentan por escrito en el libro de reclamos y sugerencias de portería, respetando el conducto regular, RIE 2026, Art. 31, p. 40). Si es estudiante, háblale de tú. Refuerza con amabilidad que todos debemos respetar los reglamentos del colegio y las leyes.",
     "Docente reemplazante": "Es un/a docente que llega a reemplazar a un titular y aún no conoce el colegio. Explícale de forma práctica y ordenada lo que pregunta. Solo si pregunta por su llegada, su primer día o su recepción en el colegio, usa la Rutina 17; para lo que ocurre en la sala usa la rutina que corresponda (inicio, cierre, manejo de aula, etc.). Si hay una situación de convivencia, indica a quién informar (UTP, Inspectoría General, Convivencia Escolar).",
     "Estudiante en práctica": "Es un/a profesor/a en formación (estudiante en práctica). Orienta según la Inducción de Profesores en Formación 2026 y la Rutina 16 del Manual de Rutinas: seguir siempre a su profesor/a guía, no resolver por su cuenta situaciones disciplinarias e informar de inmediato a su profesor/a guía, usar delantal, lenguaje formal, celular solo en emergencias, y respetar la confidencialidad. Indica qué rutinas aplicar en el aula.",
     "Apoderado/a": "Es madre, padre o apoderado/a. Usa lenguaje claro y cordial. Explica sus derechos y deberes según el RIE, a quién acudir siguiendo el conducto regular (profesor/a jefe, Inspectoría General, Convivencia Escolar, UTP, Dirección), qué plazos tiene y cómo presentar solicitudes, justificaciones o apelaciones por escrito. No le indiques procedimientos internos que corresponden solo al personal.",
