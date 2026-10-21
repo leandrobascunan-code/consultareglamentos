@@ -234,6 +234,7 @@
     [/reevalu|(60|sesenta) ?%|todo el curso|curso completo/i, "reevaluacion aprobados porcentaje curso instrumento"],
     [/promoci|repit|pasa(r)? de curso|aprobar el a[nñ]o/i, "promocion promovidos asistencia reprobado promedio"],
     [/pelea|golpe|agred|agresi/i, "agresion violencia fisica maltrato protocolo"],
+    [/insult|garabat|groser|ofend|ofensiv|apod|burl|humill|descalific|amenaz|trat[oó] mal|falt[oó] el respeto|falta de respeto/i, "agredir amenazar verbalmente epitetos apodos ofensivos palabras ofensivas gestos descalifique menoscabe dignidad integrante comunidad"],
     [/celular|tel[eé]fono m[oó]vil|redes sociales/i, "dispositivos telefono celular tecnologicos"],
     [/copi(a|ar|ando)|plagi|torpedo/i, "copia plagio suplantacion evaluacion"],
     [/cierre anticipado|terminar el a[nñ]o/i, "cierre anticipado ano escolar solicitud"],
@@ -256,6 +257,49 @@
     ["Normas generales (uniforme, horarios, celular)", /uniforme|presentaci[oó]n personal|celular|horario|atraso|puntualidad|recreo|comedor|laboratorio/i],
     ["PEI, misión y sellos", /\bpei\b|misi[oó]n|visi[oó]n|sello|valores/i]
   ];
+  // ---------- Cálculo exacto de aprobados / reprobados (Reglamento de Evaluación 2026, Arts. 17 y 24) ----------
+  // Aprobado: 4,0 o más. Reprobado (nota roja, bajo rendimiento): 3,9 o menos.
+  // Art. 24: si los aprobados NO SUPERAN el 60% del curso, el docente debe reevaluar (previa retroalimentación).
+  function fmt(n) { return (Math.round(n * 10) / 10).toString().replace(".", ","); }
+  function calcularAprobacion(t) {
+    var s = String(t || "").toLowerCase().replace(/(\d),(\d)/g, "$1.$2");
+    var NUM = "(\\d{1,3})", m, parte, total, tipo = null;
+    var reRep = /reprob|rojo|roja|bajo (el )?(4|cuatro)|menos de (4|cuatro)|bajo rendimiento|insuficiente|no aprob|mal(a|as)? nota|nota(s)? (baja|roja|insuficiente)|bajo 3|3[.,]9|1[.,]0 a 3/;
+    var reApr = /aprob|azul|sobre (el )?(4|cuatro)|4[.,]0 o m[aá]s|igual o (sobre|superior)/;
+    // "5 de 40", "5 alumnos de 40", "5 de un curso de 40", "5 estudiantes de los 40"
+    if ((m = s.match(new RegExp(NUM + "\\s*(?:alumn\\w*|estudiant\\w*|ni[nñ]\\w*|chic\\w*)?\\s*(?:de|del total de|de un total de|de un curso de|de los|sobre|en un curso de)\\s*(?:un total de\\s*)?" + NUM)))) { parte = +m[1]; total = +m[2]; }
+    // "curso de 40 ... 5 reprobados" / "40 alumnos y 5 reprobaron"
+    else if ((m = s.match(new RegExp("(?:curso|clase|total)\\s*(?:de|con)?\\s*" + NUM + "[^\\d]{0,60}?" + NUM + "\\s*(?:alumn\\w*|estudiant\\w*)?\\s*(reprob\\w*|aprob\\w*|con nota roja|con rojo)")))) { total = +m[1]; parte = +m[2]; }
+    else if ((m = s.match(new RegExp(NUM + "\\s*(?:alumn\\w*|estudiant\\w*)[^\\d]{0,40}?" + NUM + "\\s*(?:alumn\\w*|estudiant\\w*)?\\s*(reprob\\w*|aprob\\w*|con nota roja)")))) { total = +m[1]; parte = +m[2]; }
+    // Otras redacciones ("de 36 estudiantes aprobaron 22", "30 alumnos y 14 sacaron nota roja"):
+    // si hay exactamente dos números enteros (sin contar notas, porcentajes ni artículos), el mayor es el total
+    if (!total) {
+      var limpio = s.replace(/\d+[.]\d+/g, " ").replace(/\d+\s*%/g, " ").replace(/\b(art(?:[íi]culo)?\.?|nota|calificaci[oó]n|decreto|ley|n[°º])\s*\d+/g, " ");
+      var nums = (limpio.match(/\b\d{1,3}\b/g) || []).map(Number).filter(function (x) { return x <= 60; });
+      if (nums.length === 2 && nums[0] !== nums[1]) { total = Math.max(nums[0], nums[1]); parte = Math.min(nums[0], nums[1]); m = [String(parte)]; }
+    }
+    if (!total || !parte && parte !== 0 || parte > total || total > 60 || total < 5) return null;
+    // ¿Los números se refieren a reprobados o a aprobados? Se mira el texto más cercano a la cifra
+    var pos = s.indexOf(m[0]); if (pos < 0) pos = 0;
+    var cerca = s.slice(Math.max(0, pos - 10), pos + m[0].length + 60);
+    if (reRep.test(cerca)) tipo = "reprobados"; else if (reApr.test(cerca)) tipo = "aprobados";
+    else if (reRep.test(s)) tipo = "reprobados"; else if (reApr.test(s)) tipo = "aprobados";
+    if (!tipo) return null;
+    var apr = tipo === "aprobados" ? parte : total - parte, rep = total - apr;
+    var pA = apr * 100 / total, pR = rep * 100 / total, reevaluar = pA <= 60;
+    var minimo = Math.floor(total * 0.6) + 1;   // aprobados necesarios para SUPERAR el 60%
+    return { total: total, apr: apr, rep: rep, pA: pA, pR: pR, reevaluar: reevaluar, minimo: minimo,
+      texto: "CÁLCULO VERIFICADO POR LA APLICACIÓN (úsalo tal cual, no lo recalcules): curso de " + total + " estudiantes; reprobados (nota 3,9 o menos) = " + rep + " (" + fmt(pR) + "%); aprobados (nota 4,0 o más) = " + apr + " (" + fmt(pA) + "%). " +
+        (reevaluar ? "Los aprobados NO superan el 60%, por lo tanto el Art. 24 del Reglamento de Evaluación 2026 SÍ obliga a reevaluar a todo el curso, previa retroalimentación, con un instrumento distinto revisado por UTP." :
+          "Los aprobados SUPERAN el 60%, por lo tanto el Art. 24 del Reglamento de Evaluación 2026 NO obliga a reevaluar el instrumento; corresponde retroalimentar y apoyar a los " + rep + " estudiantes que reprobaron.") +
+        " Para superar el 60% se necesitan al menos " + minimo + " aprobados de " + total + "." };
+  }
+  function tarjetaCalculo(c) {
+    return '<div class="calculo-eval ' + (c.reevaluar ? "si" : "no") + '"><div class="calc-titulo">' + ico("grafico") + " Cálculo según el Reglamento de Evaluación 2026 (Arts. 17 y 24)</div>" +
+      '<div class="calc-barra" role="img" aria-label="' + fmt(c.pA) + '% aprobados"><span class="apr" style="width:' + c.pA + '%"></span><i class="umbral" title="60%"></i></div>' +
+      '<div class="calc-cifras"><div><b>' + c.apr + "</b> aprobados<span>" + fmt(c.pA) + "% · nota 4,0 o más</span></div><div><b>" + c.rep + "</b> reprobados<span>" + fmt(c.pR) + "% · nota 3,9 o menos</span></div><div><b>" + c.total + "</b> en total<span>umbral: más del 60%</span></div></div>" +
+      '<p class="calc-veredicto">' + (c.reevaluar ? ico("alerta") + " <b>Debe reevaluarse</b> a todo el curso (Art. 24): los aprobados no superan el 60%." : ico("check") + " <b>No es obligatorio reevaluar</b> (Art. 24): los aprobados superan el 60%. Se retroalimenta y apoya a quienes reprobaron.") + "</p></div>";
+  }
   function esAusenciaEvaluacion(t) { return INTENCIONES[0][0].test(t); }   // "faltó a una prueba" no es una falta disciplinaria
   function clasificarTema(t) {
     if (esAusenciaEvaluacion(t) && !/sanci|anotaci|disciplin|copi|plagi/i.test(t)) return "Evaluación y calificaciones";
@@ -829,10 +873,12 @@
     if (estado.pasoPerfil !== "listo") estado.pasoPerfil = "listo"; // nunca obligamos a marcar el perfil
     var consultaBusqueda = opts.esRespuesta ? ultimaConsulta() + " " + texto : texto;
     var frags = buscar(consultaBusqueda, 5);
-    // Faltas de estudiantes: se asegura el artículo del RIE que clasifica la falta (leve, grave o gravísima)
-    if (RE_DISCIPLINA.test(consultaBusqueda) && !frags.some(function (r) { return /Art[ií]culo 36\b/.test(r.f.s || ""); })) {
-      var clasif = buscar(consultaBusqueda + " faltas leves graves gravísimas medidas", 8).filter(function (r) { return /Art[ií]culo 36\b/.test(r.f.s || ""); })[0];
-      if (clasif) frags.splice(Math.min(2, frags.length), 0, clasif);
+    // Faltas de estudiantes: se aseguran los 2 fragmentos del Art. 36 del RIE (listas de faltas leves, graves y gravísimas, pp. 52-58)
+    // que mejor calzan con la conducta descrita, para que la clasificación se haga con el texto del reglamento
+    if (RE_DISCIPLINA.test(consultaBusqueda) || RE_CONDUCTA.test(consultaBusqueda)) {
+      var clasif = buscar(consultaBusqueda + " faltas leves graves gravísimas medidas", 40).filter(function (r) { return r.f.d === "rie" && r.f.p >= 52 && r.f.p <= 58; }).slice(0, 2);
+      clasif.reverse().forEach(function (c) { if (!frags.some(function (x) { return x.f === c.f; })) frags.splice(Math.min(1, frags.length), 0, c); });
+      frags = frags.slice(0, 6);
     }
     if (!frags.length) frags = buscar(consultaBusqueda.replace(/[¿?¡!.,;:]/g, " ").split(/\s+/).filter(function (w) { return w.length > 4; }).join(" "), 5);
     var tema = clasificarTema(consultaBusqueda), delito = RE_DELITO.test(consultaBusqueda);
@@ -846,6 +892,9 @@
       if (soloRut.length) { frags = soloRut; tema = "Rutinas, reemplazos y prácticas"; } else esRutina = false;
     }
     var nivelF = !esRutina && clasificaFalta(consultaBusqueda);
+    // Evaluación: modo experto (Reglamento de Evaluación 2026 + Decreto 67) y cálculo exacto de porcentajes
+    var esEvaluacion = !esRutina && !delito && (EVAL.test(consultaBusqueda) || /aprob|reprob|nota roja|rojos?\b|promedio|ponderaci|escala|eval[uú]|bajo (el )?4|4[.,]0|3[.,]9/i.test(consultaBusqueda));
+    var calculo = esEvaluacion ? (calcularAprobacion(texto) || (opts.esRespuesta ? calcularAprobacion(consultaBusqueda) : null)) : null;
     var disciplinario = !esRutina && delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
     function agregarNorma(id) {
@@ -879,6 +928,7 @@
       accion: "chat", consulta: texto, modo: "chat", web: estado.web, tema: tema, disciplinario: disciplinario, delito: delito, derechos: derechos, video: /video|youtube/i.test(texto),
       historial: estado.mensajes.slice(-4).map(function (m) { return { role: m.role, content: m.content.slice(0, 1500) }; }),
       perfil: estado.perfil,
+      evaluacion: esEvaluacion, calculo: calculo ? calculo.texto : "",
       protocolos: pideProtocolos(consultaBusqueda), nivelFalta: nivelF && !opts.esRespuesta, rutinas: esRutina, profundizar: !!opts.esRespuesta,
       anterior: opts.esRespuesta ? ultimaConsulta().slice(0, 300) : "",
       // Rutinas encontradas, en orden de pertinencia: la IA debe usar estas y no otras
@@ -892,7 +942,7 @@
       clearInterval(relojEspera); estado.ocupado = false; $("#btnEnviar").disabled = false; pensando.remove();
       estado.mensajes.push({ role: "user", content: texto });
       if (!local) estado.mensajes.push({ role: "assistant", content: resp.texto });
-      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, nivelFalta: nivelF, delito: delito, rutinas: esRutina, profundizar: !!opts.esRespuesta, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
+      mostrarRespuesta({ consulta: texto, texto: resp.texto, frags: frags, calculo: calculo, nivelFalta: nivelF, delito: delito, rutinas: esRutina, profundizar: !!opts.esRespuesta, normativa: normativa, local: !!local, videos: resp.videos || [], aviso: resp.aviso, busqueda: consultaBusqueda,
         servidor: (resp.fuentesServidor || []).filter(function (s) { return s && s.titulo && new RegExp("\\[S\\d\\]|" + String(s.titulo).slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(resp.texto); }) });
     };
     // Estadística anónima (tema y rol) en paralelo: no retrasa la respuesta
@@ -1006,6 +1056,11 @@
     var texto = caja.textContent.replace(h.textContent, "").trim();
     var noEs = /^(no|claramente no)\b[^.]{0,80}\b(es|constituye|configura|parece)\b[^.]{0,30}delito/i.test(texto) || /^no (es|constituye) (un )?delito/i.test(texto);
     if (noEs) { caja.classList.add("no-delito"); return; }
+    // Imágenes íntimas de estudiantes: advertencia práctica obligatoria (art. 367 quáter del Código Penal)
+    var q = r.busqueda || r.consulta || "";
+    if (/foto|imagen|video|nude|pack|sexting|captura|grab/i.test(q) && /[ií]ntim|desnud|sexual|nude|pack|sexting|er[oó]tic/i.test(q))
+      caja.insertAdjacentHTML("beforeend", '<p class="aviso-imagenes">' + ico("alerta") + " <b>No reenvíes, guardes, descargues ni muestres las imágenes</b>, ni siquiera como prueba: si aparece una persona menor de 18 años, eso también puede ser delito (Código Penal, art. 367 quáter). Anota solo dónde se vio y quiénes lo informaron, y entrégalo a la Fiscalía con la denuncia.</p>");
+    if (!/no reemplaza la asesor/i.test(caja.textContent)) caja.insertAdjacentHTML("beforeend", '<p class="nota-juridica"><em>Orientación jurídica general basada en los hechos descritos; no reemplaza la asesoría del área jurídica del SLEP Andalién Sur ni la decisión de la Fiscalía.</em></p>');
     caja.insertAdjacentHTML("afterbegin", '<div class="sello-delito" role="alert">' + ico("alerta") + "<div><b>POSIBLE DELITO</b><span>Denuncia obligatoria dentro de 24 horas (Código Procesal Penal, arts. 175-177). Activa además el protocolo del RIE.</span></div></div>");
     // Aviso también al inicio de la respuesta
     cont.insertAdjacentHTML("afterbegin", '<p class="aviso-delito">' + ico("alerta") + " <b>Atención: el hecho podría constituir delito.</b> Revisa la sección destacada en rojo.</p>");
@@ -1058,6 +1113,10 @@
     cont.innerHTML = html;
     marcarDelito(cont, r);
     darFormatoVisual(cont, r);
+    if (r.calculo) {   // tarjeta con el cálculo exacto, justo después de "En breve"
+      var eb = cont.querySelector("p.en-breve");
+      if (eb) eb.insertAdjacentHTML("afterend", tarjetaCalculo(r.calculo)); else cont.insertAdjacentHTML("afterbegin", tarjetaCalculo(r.calculo));
+    }
     // Si pregunta a quién contactar o por el equipo, se muestran los correos (la IA no los inventa)
     if (/correo|contact|equipo (del|directivo)|qui[eé]n(es)? (es|son|est[aá]) (el|la|los|las|a cargo)|director[a]?\b|jef[ae] de utp|a qui[eé]n (le )?(escribo|aviso|informo|acudo)/i.test(r.busqueda || r.consulta) && equipoVisible().length) {
       cont.insertAdjacentHTML("beforeend", '<h3><span class="ico-titulo" style="background:#0E7C86">' + ico("usuarios") + "</span>Equipo del establecimiento</h3>" + equipoHTML());
