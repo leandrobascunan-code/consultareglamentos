@@ -482,8 +482,17 @@
       return '<div class="fila-doc"><div class="t"><b>' + esc(d.titulo) + "</b><small>Incluido en la app · " + esc(d.archivo) + '</small></div><span class="' + (oc ? "estado-oculto" : "estado-visible") + '">' + (oc ? "Eliminado del chat" : "Visible") + "</span>" +
         '<button class="boton ' + (oc ? "" : "peligro") + '" data-base="' + esc(d.clave || d.id) + '" data-oc="' + (oc ? 0 : 1) + '">' + (oc ? I.ojo + " Restaurar" : I.basura + " Eliminar") + "</button></div>";
     }).join("");
+    // Detecta si un documento subido repite uno que ya viene en la app (por ejemplo, el RIE 2026)
+    function duplicaBase(d) {
+      var t = String(d.titulo || "").toLowerCase();
+      return KB.documentos.filter(function (b) {
+        var anio = (String(b.titulo).match(/20\d\d/) || [""])[0];
+        return (b.id === "rie" && /\b(rie|reglamento interno)\b/.test(t) && (!anio || t.indexOf(anio) >= 0)) || (b.id === "rep2026" && /evaluaci/.test(t) && /2026/.test(t));
+      })[0];
+    }
     var propios = (cat.documentos || []).map(function (d) {
-      return '<div class="fila-doc"><div class="t"><b>' + esc(d.titulo) + "</b><small>" + esc(d.categoria || "") + " · " + (d.origen === "drive" ? "Archivo en Drive" : "Enlace") + "</small></div>" +
+      var dup = duplicaBase(d);
+      return '<div class="fila-doc"><div class="t"><b>' + esc(d.titulo) + "</b>" + (dup ? '<span class="estado-medio" style="display:block;width:fit-content;margin:3px 0">Duplicado: ya viene incluido en la app</span>' : "") + "<small>" + esc(d.categoria || "") + " · " + (d.origen === "drive" ? "Archivo en Drive" : "Enlace") + "</small></div>" +
         (d.url ? '<a class="boton sec" target="_blank" rel="noopener" href="' + esc(d.url) + '">' + I.ojo + " Ver</a>" : "") +
         (d.origen === "enlace" ? '<button class="boton sec" data-editar="' + esc(d.id) + '">' + I.lapiz + " Editar</button>" : "") +
         '<button class="boton peligro" data-borrar="' + esc(d.id) + '">' + I.basura + " Eliminar</button></div>";
@@ -499,7 +508,7 @@
       '<div class="campo"><label for="eCat">Categoría</label><select id="eCat">' + opcCat.replace("<option>Enlaces de interés", "<option selected>Enlaces de interés") + "</select></div>" + campo("eDesc", "Descripción (opcional)", "") +
       '</div><input type="hidden" id="eId"><button class="boton" type="submit">' + I.guardar + ' Guardar enlace</button></form></div>' +
       '<div class="tarjeta"><h2>' + I.archivo + " Documentos y enlaces agregados</h2>" + propios + "</div>" +
-      '<div class="tarjeta"><h2>' + I.archivo + ' Documentos incluidos en la app</h2><p class="ayuda">Vienen en el paquete de GitHub. "Eliminar" los quita del chat y de la Biblioteca (puede restaurarlos). Para borrarlos definitivamente, elimine el archivo en GitHub.</p>' + base + "</div>";
+      '<div class="tarjeta"><h2>' + I.archivo + ' Documentos incluidos en la app</h2><p class="ayuda">Vienen en el paquete de GitHub. "Eliminar" los quita del chat y de la Biblioteca (puede restaurarlos). Si un documento subido aparece como «Duplicado», elimínelo de la lista de arriba y deje este, que permite citar por página y funciona sin conexión.</p>' + base + "</div>";
 
     c.querySelectorAll("[data-base]").forEach(function (b) {
       b.onclick = function () {
@@ -510,9 +519,9 @@
     });
     c.querySelectorAll("[data-borrar]").forEach(function (b) {
       b.onclick = function () {
-        if (!confirm("¿Eliminar este documento? El archivo se enviará a la papelera de Drive.")) return;
+        if (!confirm("¿Eliminar este documento de forma DEFINITIVA?\n\nSe borrará del chat, de la Biblioteca, de la búsqueda de Timón y también de Google Drive (no queda en la papelera). No necesita entrar a Drive.\n\nEsta acción no se puede deshacer.")) return;
         var id = b.getAttribute("data-borrar");
-        guardar({ accion: "eliminar_documento", id: id }, c, function () { cat.documentos = cat.documentos.filter(function (d) { return d.id !== id; }); pintar(); });
+        guardar({ accion: "eliminar_documento", id: id }, c, function () { cat.documentos = cat.documentos.filter(function (d) { return d.id !== id; }); pintar(); toast("Documento eliminado del chat, de la búsqueda y de Drive ✔", 4000); });
       };
     });
     c.querySelectorAll("[data-editar]").forEach(function (b) {
