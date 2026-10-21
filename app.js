@@ -284,7 +284,13 @@
     var cerca = s.slice(Math.max(0, pos - 10), pos + m[0].length + 60);
     if (reRep.test(cerca)) tipo = "reprobados"; else if (reApr.test(cerca)) tipo = "aprobados";
     else if (reRep.test(s)) tipo = "reprobados"; else if (reApr.test(s)) tipo = "aprobados";
-    if (!tipo) return null;
+    if (!tipo) {
+      // Solo se pide un porcentaje (sin decir si aprobaron o reprobaron): se informa la proporción del total
+      if (!/porcentaje|%|por ciento|proporci|qu[eé] parte|representa/.test(s)) return null;
+      var p = parte * 100 / total;
+      return { generico: true, parte: parte, total: total, p: p, resto: total - parte, pResto: 100 - p,
+        texto: "CÁLCULO VERIFICADO POR LA APLICACIÓN (úsalo tal cual): " + parte + " de " + total + " = " + fmt(p) + "% del total; los " + (total - parte) + " restantes = " + fmt(100 - p) + "%. Fórmula: parte ÷ total × 100. La persona NO dijo si esos estudiantes aprobaron o reprobaron: no lo supongas; si es necesario, pregúntalo en Para profundizar." };
+    }
     var apr = tipo === "aprobados" ? parte : total - parte, rep = total - apr;
     var pA = apr * 100 / total, pR = rep * 100 / total, reevaluar = pA <= 60;
     var minimo = Math.floor(total * 0.6) + 1;   // aprobados necesarios para SUPERAR el 60%
@@ -294,7 +300,16 @@
           "Los aprobados SUPERAN el 60%, por lo tanto el Art. 24 del Reglamento de Evaluación 2026 NO obliga a reevaluar el instrumento; corresponde retroalimentar y apoyar a los " + rep + " estudiantes que reprobaron.") +
         " Para superar el 60% se necesitan al menos " + minimo + " aprobados de " + total + "." };
   }
+  // Versión en texto del cálculo (para Copiar, Compartir y PDF)
+  function mdCalculo(c) {
+    if (c.generico) return "### Porcentaje del total\n| Grupo | Estudiantes | Porcentaje |\n|---|---|---|\n| Indicados | " + c.parte + " de " + c.total + " | " + fmt(c.p) + "% |\n| Resto del curso | " + c.resto + " de " + c.total + " | " + fmt(c.pResto) + "% |";
+    return "### Porcentaje de aprobación del curso\n| Resultado | Estudiantes | Porcentaje |\n|---|---|---|\n| Aprobados (4,0 o más) | " + c.apr + " de " + c.total + " | " + fmt(c.pA) + "% |\n| Reprobados (3,9 o menos) | " + c.rep + " de " + c.total + " | " + fmt(c.pR) + "% |\n\n" +
+      (c.reevaluar ? "**Debe reevaluarse a todo el curso:** los aprobados no superan el 60% (Reglamento de Evaluación 2026, Art. 24)." : "**No es obligatorio reevaluar:** los aprobados superan el 60% (Reglamento de Evaluación 2026, Art. 24). Se retroalimenta y apoya a quienes reprobaron.");
+  }
   function tarjetaCalculo(c) {
+    if (c.generico) return '<div class="calculo-eval no"><div class="calc-titulo">' + ico("grafico") + " Porcentaje del total</div>" +
+      '<div class="calc-barra" style="background:var(--superficie-2)"><span class="apr" style="width:' + c.p + '%;background:linear-gradient(90deg,#1E4FA3,#2E9BD6)"></span></div>' +
+      '<div class="calc-cifras" style="grid-template-columns:1fr 1fr"><div><b>' + fmt(c.p) + "%</b>" + c.parte + " de " + c.total + "<span>los indicados</span></div><div><b>" + fmt(c.pResto) + "%</b>" + c.resto + " de " + c.total + "<span>resto del curso</span></div></div></div>";
     return '<div class="calculo-eval ' + (c.reevaluar ? "si" : "no") + '"><div class="calc-titulo">' + ico("grafico") + " Cálculo según el Reglamento de Evaluación 2026 (Arts. 17 y 24)</div>" +
       '<div class="calc-barra" role="img" aria-label="' + fmt(c.pA) + '% aprobados"><span class="apr" style="width:' + c.pA + '%"></span><i class="umbral" title="60%"></i></div>' +
       '<div class="calc-cifras"><div><b>' + c.apr + "</b> aprobados<span>" + fmt(c.pA) + "% · nota 4,0 o más</span></div><div><b>" + c.rep + "</b> reprobados<span>" + fmt(c.pR) + "% · nota 3,9 o menos</span></div><div><b>" + c.total + "</b> en total<span>umbral: más del 60%</span></div></div>" +
@@ -893,7 +908,7 @@
     }
     var nivelF = !esRutina && clasificaFalta(consultaBusqueda);
     // Evaluación: modo experto (Reglamento de Evaluación 2026 + Decreto 67) y cálculo exacto de porcentajes
-    var esEvaluacion = !esRutina && !delito && (EVAL.test(consultaBusqueda) || /aprob|reprob|nota roja|rojos?\b|promedio|ponderaci|escala|eval[uú]|bajo (el )?4|4[.,]0|3[.,]9/i.test(consultaBusqueda));
+    var esEvaluacion = !esRutina && !delito && (EVAL.test(consultaBusqueda) || /aprob|reprob|nota roja|rojos?\b|promedio|ponderaci|escala|eval[uú]|bajo (el )?4|4[.,]0|3[.,]9|porcentaje|por ciento|%/i.test(consultaBusqueda));
     var calculo = esEvaluacion ? (calcularAprobacion(texto) || (opts.esRespuesta ? calcularAprobacion(consultaBusqueda) : null)) : null;
     var disciplinario = !esRutina && delito || tema === "Faltas, medidas y debido proceso" || (RE_DISCIPLINA.test(consultaBusqueda) && !(esAusenciaEvaluacion(consultaBusqueda) && !/sanci|anotaci|disciplin|suspen|expuls/i.test(consultaBusqueda)));
     var normativa = normativaPara(consultaBusqueda, 5);
@@ -1103,6 +1118,8 @@
       var corte = r.texto.search(/\n#{2,3} (?!En breve)/);
       r.texto = corte > 0 ? r.texto.slice(0, corte) + "\n\n" + tablaP + "\n" + r.texto.slice(corte) : tablaP + "\n\n" + r.texto;
     }
+    // El cálculo exacto va al inicio del texto (así también aparece al copiar, compartir o descargar en PDF)
+    if (r.calculo && r.texto.indexOf("### Porcentaje ") < 0) r.texto = mdCalculo(r.calculo) + "\n\n" + r.texto;
     var idx = estado.respuestas.length; estado.respuestas.push(r); r.graficos = [];
     var bl = aBloques(r.texto);
     // Fuentes externas sugeridas (enlaces verificados) si la IA no las incluyó
@@ -1113,9 +1130,9 @@
     cont.innerHTML = html;
     marcarDelito(cont, r);
     darFormatoVisual(cont, r);
-    if (r.calculo) {   // tarjeta con el cálculo exacto, justo después de "En breve"
-      var eb = cont.querySelector("p.en-breve");
-      if (eb) eb.insertAdjacentHTML("afterend", tarjetaCalculo(r.calculo)); else cont.insertAdjacentHTML("afterbegin", tarjetaCalculo(r.calculo));
+    if (r.calculo) {   // en pantalla, la sección de porcentajes se muestra como tarjeta visual (va primero)
+      var hc = [].slice.call(cont.querySelectorAll("h3")).filter(function (h) { return /^Porcentaje (de aprobaci|del total)/i.test(h.textContent.trim()); })[0];
+      if (hc) { var sc = seccionDe(hc); sc.outerHTML = tarjetaCalculo(r.calculo); } else cont.insertAdjacentHTML("afterbegin", tarjetaCalculo(r.calculo));
     }
     // Si pregunta a quién contactar o por el equipo, se muestran los correos (la IA no los inventa)
     if (/correo|contact|equipo (del|directivo)|qui[eé]n(es)? (es|son|est[aá]) (el|la|los|las|a cargo)|director[a]?\b|jef[ae] de utp|a qui[eé]n (le )?(escribo|aviso|informo|acudo)/i.test(r.busqueda || r.consulta) && equipoVisible().length) {
